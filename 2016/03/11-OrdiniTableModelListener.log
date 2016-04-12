@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="windows-1252" standalone="no"?>
+<!DOCTYPE log SYSTEM "logger.dtd">
+<log>
+<record>
+  <date>2016-03-11T13:25:04</date>
+  <millis>1457699104360</millis>
+  <sequence>1</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 12   COLONNA MODIFICATA: 2</message>
+</record>
+</log>

@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="windows-1252" standalone="no"?>
+<!DOCTYPE log SYSTEM "logger.dtd">
+<log>
+<record>
+  <date>2016-01-15T17:08:50</date>
+  <millis>1452874130272</millis>
+  <sequence>97</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 4   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:08:50</date>
+  <millis>1452874130273</millis>
+  <sequence>98</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=157, camion=A123456, autista=sud, posizione=Nord, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:08:52</date>
+  <millis>1452874132880</millis>
+  <sequence>99</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 5   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:08:52</date>
+  <millis>1452874132882</millis>
+  <sequence>100</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=165, camion=G123456, autista=sud, posizione=Nord, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:08:55</date>
+  <millis>1452874135217</millis>
+  <sequence>101</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 6   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:08:55</date>
+  <millis>1452874135219</millis>
+  <sequence>102</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=166, camion=C123456, autista=sud, posizione=Nord, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:00</date>
+  <millis>1452874140013</millis>
+  <sequence>103</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 1   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:00</date>
+  <millis>1452874140015</millis>
+  <sequence>104</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=159, camion=ZZZZZZZ, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:03</date>
+  <millis>1452874143998</millis>
+  <sequence>105</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 2   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:04</date>
+  <millis>1452874144000</millis>
+  <sequence>106</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=160, camion=DEWFWFE, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:07</date>
+  <millis>1452874147685</millis>
+  <sequence>107</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 3   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:07</date>
+  <millis>1452874147687</millis>
+  <sequence>108</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=161, camion=D123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:11</date>
+  <millis>1452874151609</millis>
+  <sequence>109</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 4   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:11</date>
+  <millis>1452874151611</millis>
+  <sequence>110</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=162, camion=E123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:13</date>
+  <millis>1452874153744</millis>
+  <sequence>111</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 5   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:13</date>
+  <millis>1452874153746</millis>
+  <sequence>112</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=163, camion=A123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:15</date>
+  <millis>1452874155573</millis>
+  <sequence>113</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 6   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:15</date>
+  <millis>1452874155575</millis>
+  <sequence>114</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=164, camion=A123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:20</date>
+  <millis>1452874160393</millis>
+  <sequence>115</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 7   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:20</date>
+  <millis>1452874160395</millis>
+  <sequence>116</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=167, camion=F123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:23</date>
+  <millis>1452874163602</millis>
+  <sequence>117</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 8   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:23</date>
+  <millis>1452874163604</millis>
+  <sequence>118</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=168, camion=E123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:56</date>
+  <millis>1452874196021</millis>
+  <sequence>119</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Eseguito if salita</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:56</date>
+  <millis>1452874196024</millis>
+  <sequence>120</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Eseguito if salita</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:56</date>
+  <millis>1452874196028</millis>
+  <sequence>121</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Eseguito if salita</message>
+</record>
+</log>

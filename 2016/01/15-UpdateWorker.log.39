@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="windows-1252" standalone="no"?>
+<!DOCTYPE log SYSTEM "logger.dtd">
+<log>
+<record>
+  <date>2016-01-15T17:09:20</date>
+  <millis>1452874160393</millis>
+  <sequence>115</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 7   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:20</date>
+  <millis>1452874160395</millis>
+  <sequence>116</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=167, camion=F123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:23</date>
+  <millis>1452874163602</millis>
+  <sequence>117</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 8   COLONNA MODIFICATA: 2</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:23</date>
+  <millis>1452874163604</millis>
+  <sequence>118</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=168, camion=E123456, autista=nord, posizione=Sud, note=, data=2015-12-24, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:56</date>
+  <millis>1452874196021</millis>
+  <sequence>119</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Eseguito if salita</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:56</date>
+  <millis>1452874196024</millis>
+  <sequence>120</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Eseguito if salita</message>
+</record>
+<record>
+  <date>2016-01-15T17:09:56</date>
+  <millis>1452874196028</millis>
+  <sequence>121</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Eseguito if salita</message>
+</record>
+</log>

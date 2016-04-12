@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="windows-1252" standalone="no"?>
+<!DOCTYPE log SYSTEM "logger.dtd">
+<log>
+<record>
+  <date>2016-01-13T19:39:04</date>
+  <millis>1452710344066</millis>
+  <sequence>117</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.ViaggiTableModel</class>
+  <method>setValueAt</method>
+  <thread>14</thread>
+  <message>true</message>
+</record>
+<record>
+  <date>2016-01-13T19:39:04</date>
+  <millis>1452710344068</millis>
+  <sequence>118</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>RIGA MODIFICATA: 2   COLONNA MODIFICATA: 5</message>
+</record>
+<record>
+  <date>2016-01-13T19:39:04</date>
+  <millis>1452710344070</millis>
+  <sequence>119</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>tableChanged</method>
+  <thread>14</thread>
+  <message>Viaggio [id=9, camion=ZZZZZZZ, autista=, posizione=Sud, note=nbjk, data=2015-12-10, litriB=0, selezionato=true]</message>
+</record>
+<record>
+  <date>2016-01-13T19:39:17</date>
+  <millis>1452710357442</millis>
+  <sequence>120</sequence>
+  <logger>global</logger>
+  <level>INFO</level>
+  <class>it.vin.dev.menzione.frame.MainFrame</class>
+  <method>reloadOrdiniModel</method>
+  <thread>14</thread>
+  <message>Ordine [id=1002, date=2015-12-11, data=, cliente=few, note=, selezionato=false, type=null]</message>
+</record>
+</log>
