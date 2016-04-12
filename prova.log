@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="windows-1252" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE log SYSTEM "logger.dtd">
 <log>
 <record>
-  <date>2016-04-12T23:39:28</date>
-  <millis>1460497168739</millis>
+  <date>2016-04-13T01:32:36</date>
+  <millis>1460503956051</millis>
   <sequence>0</sequence>
   <logger>global</logger>
   <level>INFO</level>
@@ -13,14 +13,14 @@
   <message>Stile trovato</message>
 </record>
 <record>
-  <date>2016-04-12T23:39:31</date>
-  <millis>1460497171805</millis>
+  <date>2016-04-13T01:32:39</date>
+  <millis>1460503959567</millis>
   <sequence>1</sequence>
   <logger>global</logger>
   <level>SEVERE</level>
   <class>it.vin.dev.menzione.frame.MainFrame</class>
   <method>inizializzazione</method>
-  <thread>14</thread>
+  <thread>15</thread>
   <message>Communications link failure
 
 The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.</message>
@@ -35,14 +35,17 @@ The last packet sent successfully to the server was 0 milliseconds ago. The driv
     <frame>
       <class>sun.reflect.NativeConstructorAccessorImpl</class>
       <method>newInstance</method>
+      <line>62</line>
     </frame>
     <frame>
       <class>sun.reflect.DelegatingConstructorAccessorImpl</class>
       <method>newInstance</method>
+      <line>45</line>
     </frame>
     <frame>
       <class>java.lang.reflect.Constructor</class>
       <method>newInstance</method>
+      <line>422</line>
     </frame>
     <frame>
       <class>com.mysql.jdbc.Util</class>
@@ -91,14 +94,17 @@ The last packet sent successfully to the server was 0 milliseconds ago. The driv
     <frame>
       <class>sun.reflect.NativeConstructorAccessorImpl</class>
       <method>newInstance</method>
+      <line>62</line>
     </frame>
     <frame>
       <class>sun.reflect.DelegatingConstructorAccessorImpl</class>
       <method>newInstance</method>
+      <line>45</line>
     </frame>
     <frame>
       <class>java.lang.reflect.Constructor</class>
       <method>newInstance</method>
+      <line>422</line>
     </frame>
     <frame>
       <class>com.mysql.jdbc.Util</class>
@@ -118,10 +124,12 @@ The last packet sent successfully to the server was 0 milliseconds ago. The driv
     <frame>
       <class>java.sql.DriverManager</class>
       <method>getConnection</method>
+      <line>664</line>
     </frame>
     <frame>
       <class>java.sql.DriverManager</class>
       <method>getConnection</method>
+      <line>247</line>
     </frame>
     <frame>
       <class>it.vin.dev.menzione.logica.DbUtil</class>
@@ -146,27 +154,32 @@ The last packet sent successfully to the server was 0 milliseconds ago. The driv
     <frame>
       <class>it.vin.dev.menzione.frame.Main$1</class>
       <method>run</method>
-      <line>114</line>
+      <line>119</line>
     </frame>
     <frame>
       <class>java.awt.event.InvocationEvent</class>
       <method>dispatch</method>
+      <line>311</line>
     </frame>
     <frame>
       <class>java.awt.EventQueue</class>
       <method>dispatchEventImpl</method>
+      <line>756</line>
     </frame>
     <frame>
       <class>java.awt.EventQueue</class>
       <method>access$500</method>
+      <line>97</line>
     </frame>
     <frame>
       <class>java.awt.EventQueue$3</class>
       <method>run</method>
+      <line>709</line>
     </frame>
     <frame>
       <class>java.awt.EventQueue$3</class>
       <method>run</method>
+      <line>703</line>
     </frame>
     <frame>
       <class>java.security.AccessController</class>
@@ -175,34 +188,42 @@ The last packet sent successfully to the server was 0 milliseconds ago. The driv
     <frame>
       <class>java.security.ProtectionDomain$JavaSecurityAccessImpl</class>
       <method>doIntersectionPrivilege</method>
+      <line>76</line>
     </frame>
     <frame>
       <class>java.awt.EventQueue</class>
       <method>dispatchEvent</method>
+      <line>726</line>
     </frame>
     <frame>
       <class>java.awt.EventDispatchThread</class>
       <method>pumpOneEventForFilters</method>
+      <line>201</line>
     </frame>
     <frame>
       <class>java.awt.EventDispatchThread</class>
       <method>pumpEventsForFilter</method>
+      <line>116</line>
     </frame>
     <frame>
       <class>java.awt.EventDispatchThread</class>
       <method>pumpEventsForHierarchy</method>
+      <line>105</line>
     </frame>
     <frame>
       <class>java.awt.EventDispatchThread</class>
       <method>pumpEvents</method>
+      <line>101</line>
     </frame>
     <frame>
       <class>java.awt.EventDispatchThread</class>
       <method>pumpEvents</method>
+      <line>93</line>
     </frame>
     <frame>
       <class>java.awt.EventDispatchThread</class>
       <method>run</method>
+      <line>82</line>
     </frame>
   </exception>
 </record>

@@ -30,11 +30,7 @@ public class Main {
 	}
 
 	public static void main(String[] args) {
-		
-		System.out.println("COMMITTTTTT");
-		System.out.println("Secondo commit!!!!!");
-		System.err.println("Terzo ed ultimo commit");
-		
+
 		logger = Logger.getGlobal();
 		System.out.println("--Ricorda di aggiornare dbversion (sia sull'aplicazione sia sul db)\n"
 				+ "se fai modifiche al database!!--");
