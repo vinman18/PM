@@ -10,6 +10,7 @@ import javax.swing.event.TableModelListener;
 import javax.swing.table.TableColumn;
 import javax.swing.text.MaskFormatter;
 
+import it.vin.dev.menzione.MainFrame.CustomDateTextField;
 import it.vin.dev.menzione.logica.*;
 
 import javax.swing.DefaultCellEditor;
@@ -80,7 +81,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 	public static Vector<Camion> camions;
 	private JPanel NorthPanel;
 	private JLabel lblSelezionaUnaData;
-	private MaskFormatter dateMask; 
+	private MaskFormatter dateMask;
 	private JPanel CenterPanel;
 	private JPanel TablePanel;
 	private JPanel titlePanel;
@@ -141,7 +142,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 	private JButton btnSalvaFermiE;
 	private Nota fermiNota;
 	private Nota nonAssNota;
-	
+
 	private void inizializzazione(){
 		logger = Logger.getGlobal();
 		FileHandler fh;
@@ -166,23 +167,23 @@ public class MainFrame extends JFrame implements TableModelListener {
 
 			System.exit(1);
 		}
-		
+
 
 		setTitle("GestioneViaggi - VER: " + Configuration.PROG_VERSION);
 		setExtendedState(Frame.MAXIMIZED_BOTH);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 	}
-	
+
 	public MainFrame() throws PropertyVetoException {
 
 		inizializzazione();
-		
+
 		setBounds(100, 100, 450, 300);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 
-		
+
 		contentPane.setLayout(new BorderLayout(0, 0));
 
 		nordTableModel = new ViaggiTableModel(Viaggio.NORD);
@@ -195,25 +196,10 @@ public class MainFrame extends JFrame implements TableModelListener {
 		NorthPanel.add(lblSelezionaUnaData);
 
 
-		formattedTextField = new JFormattedTextField();
-		formattedTextField.addFocusListener(new FocusAdapter() {
-			@Override
-			public void focusGained(FocusEvent arg0) {
+		formattedTextField = new CustomDateTextField();
 
-				JTextField source = (JTextField) arg0.getSource();
-				source.setCaretPosition(0);
 
-			}
-		});
-		formattedTextField.setColumns(10);
-		NorthPanel.add(formattedTextField);		
-		try {
-			dateMask = new MaskFormatter("##/##/####");
-		} catch (ParseException e1) {
-			logger.log(Level.SEVERE, e1.getMessage(), e1);
-			e1.printStackTrace();
-		}
-		dateMask.install(formattedTextField);
+		NorthPanel.add(formattedTextField);
 
 		JButton cercaButton = new JButton("Cerca");
 		NorthPanel.add(cercaButton);
@@ -262,7 +248,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 					JOptionPane.showMessageDialog(root, e.getMessage(),
 							"ERRORE", JOptionPane.ERROR_MESSAGE, null);
 				}
-				
+
 			}
 		});
 
@@ -305,7 +291,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 				}
 			}
 		});
-		
+
 		formattedTextField.addKeyListener(new KeyListener() {
 			@Override
 			public void keyPressed(KeyEvent e) {
@@ -412,22 +398,22 @@ public class MainFrame extends JFrame implements TableModelListener {
 
 		noteTable = new JTable();
 		noteScrollPane.setViewportView(noteTable);
-		
+
 		noteModel = new NoteTableModel();
-		
+
 		noteTable.setModel(noteModel);
-		
+
 		noteButtonPanel = new JPanel();
 		notePanel.add(noteButtonPanel, BorderLayout.NORTH);
 		noteButtonPanel.setLayout(new BorderLayout(0, 0));
-		
+
 		lblNote = new JLabel("Note");
 		lblNote.setHorizontalAlignment(SwingConstants.CENTER);
 		noteButtonPanel.add(lblNote, BorderLayout.CENTER);
-		
+
 		panel_8 = new JPanel();
 		noteButtonPanel.add(panel_8, BorderLayout.EAST);
-		
+
 		NoteRemoveButton = new JButton("-");
 		NoteRemoveButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -449,7 +435,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 			}
 		});
 		panel_8.add(NoteRemoveButton);
-		
+
 		noteAddButton = new JButton("+");
 		noteAddButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
@@ -486,7 +472,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 				}
 
 			}
-			
+
 		});
 		panel_8.add(noteAddButton);
 
@@ -636,7 +622,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 			JOptionPane.showMessageDialog(this, "Errore di connessione al server"
 					+ "\nCodice errore :"+e1.getErrorCode()+"\n"+e1.getMessage(),
 					"ERRORE", JOptionPane.ERROR_MESSAGE, null);
-		}		
+		}
 
 		sudTablePanel = new JPanel();
 		TablePanel.add(sudTablePanel);
@@ -767,16 +753,16 @@ public class MainFrame extends JFrame implements TableModelListener {
 
 		lblNonAssicurati = new JLabel("Non assicurati");
 		panel_7.add(lblNonAssicurati, BorderLayout.NORTH);
-		
+
 		btnSalvaFermiE = new JButton("Salva fermi e non ass.");
 		btnSalvaFermiE.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				
+
 				try {
 					String s = selectedDateLbl.getText();
 					s = s.replace('-', '/');
 					Date d = checkAndCreateDate(s);
-					
+
 					if(fermiNota == null){
 						fermiNota = new Nota(d, fermiTxt.getText(), Nota.FERMI);
 						dbu.aggiungiNota(fermiNota);
@@ -785,7 +771,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 						fermiNota.setTesto(fermiTxt.getText());
 						dbu.modificaNota(fermiNota);
 					}
-					
+
 					if(nonAssNota == null){
 						nonAssNota = new Nota(d, fermiTxt.getText(), Nota.NONASS);
 						dbu.aggiungiNota(nonAssNota);
@@ -794,10 +780,10 @@ public class MainFrame extends JFrame implements TableModelListener {
 						nonAssNota.setTesto(nonAssicuratiTxt.getText());
 						dbu.modificaNota(nonAssNota);
 					}
-					
+
 					reloadNote(d);
-					
-					
+
+
 				} catch (SQLException e1) {
 					logger.log(Level.SEVERE, e1.getMessage(), e1);
 					e1.printStackTrace();
@@ -805,11 +791,11 @@ public class MainFrame extends JFrame implements TableModelListener {
 							+ "\nCodice errore :"+e1.getErrorCode()+"\n"+e1.getMessage(),
 							"ERRORE", JOptionPane.ERROR_MESSAGE, null);
 				}
-				
-				
+
+
 			}
 		});
-		
+
 		otherPanel.add(btnSalvaFermiE);
 		lblSud = new JLabel("SUD");
 		lblSud.setHorizontalAlignment(SwingConstants.CENTER);
@@ -871,7 +857,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 		reloadTableModel(lastDate, MainFrame.RELOAD_STANDARD);
 		reloadOrdiniModel(lastDate);
 		reloadNote(lastDate);
-		
+
 	}
 
 
@@ -890,7 +876,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 
 	private Date checkAndCreateDate(String s) throws NumberFormatException{
 		String[] tmp;
-		boolean giornoOK = false, meseOK = false, annoOK = false; 
+		boolean giornoOK = false, meseOK = false, annoOK = false;
 		int giornoTMP = -1, meseTMP = -1, annoTMP = -1;
 		Date result = null;
 
@@ -977,10 +963,10 @@ public class MainFrame extends JFrame implements TableModelListener {
 
 		OrdiniTableModel tmSalita = (OrdiniTableModel) ordiniSalitaTable.getModel();
 		OrdiniTableModel tmDiscesa = (OrdiniTableModel) ordiniDiscesaTable.getModel();
-		
+
 		Vector<Ordine> salite = new Vector<Ordine>();
 		Vector<Ordine> discese = new Vector<Ordine>();
-		
+
 		try {
 			Vector<Ordine> fromDB = dbu.getOrdiniByDate(d);
 			for(Ordine o : fromDB){
@@ -992,7 +978,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 			}
 			tmSalita.setData(salite);
 			tmDiscesa.setData(discese);
-			
+
 		} catch (SQLException e1) {
 			logger.log(Level.SEVERE, e1.getMessage(), e1);
 			e1.printStackTrace();
@@ -1004,11 +990,11 @@ public class MainFrame extends JFrame implements TableModelListener {
 	}
 
 	public void reloadNote(Date d){
-		
+
 		Vector<Nota> fromDB = new Vector<>();
 		Vector<Nota> toNoteTable = new Vector<>();
 		NoteTableModel tm = (NoteTableModel) noteTable.getModel();
-		
+
 		try{
 			fromDB = dbu.getNoteByDate(d);
 			for(Nota n : fromDB){
@@ -1031,7 +1017,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 					+ "\nCodice errore :"+e1.getErrorCode()+"\n"+e1.getMessage(),
 					"ERRORE", JOptionPane.ERROR_MESSAGE, null);
 		}
-		
+
 	}
 
 
@@ -1214,18 +1200,18 @@ public class MainFrame extends JFrame implements TableModelListener {
 				//clientiNoteTablePanel.getHeight();
 
 				contentPane.setMaximumSize(source.getSize());
-				
+
 				clientiTableSplitPanel.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight/3.5)));
 
 				nordTablePanel.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight/3)));
 				sudTablePanel.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight/3)));
 				//viaggiSplitPane.setPreferredSize(new Dimension((newWidth/2), (newHeight/2) + (int)(newHeight/3)));
-				
+
 				notePanel.setPreferredSize(new Dimension((newWidth/3)-20, CenterPanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) + 20))));
 				//noteScrollPane.setPreferredSize(new Dimension((newWidth/3)-20, CenterPanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) +20 ))));
-				
+
 			}
-			
+
 		});
 
 		this.addWindowListener(new WindowAdapter() {
