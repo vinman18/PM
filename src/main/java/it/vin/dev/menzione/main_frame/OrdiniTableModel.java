@@ -1,18 +1,18 @@
-package it.vin.dev.menzione.frame;
+package it.vin.dev.menzione.main_frame;
 
 import java.util.Vector;
-import java.util.logging.Logger;
-
 import javax.swing.table.AbstractTableModel;
 
 import it.vin.dev.menzione.logica.Ordine;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class OrdiniTableModel extends AbstractTableModel {
 
 	private static final long serialVersionUID = 3190609378048624032L;
-	protected Vector<Ordine> ordini;
+	private Vector<Ordine> ordini;
 	private String[] colonne = {"", "Data", "Cliente", "Note"};
-	private Logger log = Logger.getGlobal();
+	private Logger log = LogManager.getLogger(this.getClass());
 	
 	public Vector<Ordine> getData(){
 		return ordini;

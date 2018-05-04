@@ -1,3 +1,4 @@
+/*
 package it.vin.dev.menzione.frame;
 
 import javax.swing.JFrame;
@@ -6,11 +7,11 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
-import javax.swing.table.TableColumn;
 import javax.swing.text.MaskFormatter;
+
+import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.logica.*;
 
-import javax.swing.DefaultCellEditor;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 
@@ -38,7 +39,7 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 	private static final long serialVersionUID = 1L;
 	private JPanel contentPane;
 	private ViaggiJTable viaggiSudTable;
-	private static DbUtil dbu;
+	private static DatabaseService dbu;
 	private static ViaggiTableModel nordTableModel;
 	private static ViaggiTableModel sudTableModel;
 	private JTable clientiTable;
@@ -51,10 +52,12 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 	private Logger logger;
 	public static Vector<Camion> camions;
 
-	/**
+	*/
+/**
 	 * Create the frame.
 	 * @throws PropertyVetoException 
-	 */
+	 *//*
+
 	public OLDMainFrame2() throws PropertyVetoException {
 
 		setTitle("ms");
@@ -68,7 +71,8 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 
 		logger = Logger.getGlobal();
 
-		/*JButton salvaButton = new JButton("Salva");
+		*/
+/*JButton salvaButton = new JButton("Salva");
 		salvaButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				(new UpdateWorker(modifiche, dbu)).run();
@@ -76,7 +80,8 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 		});
 		salvaButton.setBounds(1255, 671, 89, 23);
 		contentPane.add(salvaButton);
-		 */
+		 *//*
+
 		
 		clientiTableScrollPane = new JScrollPane();
 		clientiTableScrollPane.setBounds(24, 109, 400, 280);
@@ -85,16 +90,16 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 		clientiTable = new JTable();
 		clientiTableScrollPane.setViewportView(clientiTable);
 
-		viaggiNordTable = new ViaggiJTable();
+		viaggiNordTable = new ViaggiJTable(0);
 		viaggiNordTable.setCellSelectionEnabled(true);
 		viaggiNordTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		nordTableModel = new ViaggiTableModel(Viaggio.NORD);
+		nordTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
 		//viaggiNordTable.setBounds(469, 103, 400, 280);
 		viaggiNordTable.setModel(nordTableModel);
 		viaggiNordTable.getModel().addTableModelListener(this);
 
-		viaggiSudTable = new ViaggiJTable();
-		sudTableModel = new ViaggiTableModel(Viaggio.SUD);
+		viaggiSudTable = new ViaggiJTable(1);
+		sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TYPE_SUD, camions);
 		//viaggiSudTable.setBounds(944, 103, 400, 280);
 		viaggiSudTable.setModel(sudTableModel);
 		viaggiSudTable.getModel().addTableModelListener(this);
@@ -252,8 +257,8 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 		Connection conn;
 		Date lastDate = Date.valueOf("1999-10-10");
 		try {
-			conn = DbUtil.createConnection();
-			dbu = DbUtil.dbUtilFactory(conn);
+			conn = DatabaseService.createConnection();
+			dbu = DatabaseService.dbUtilFactory(conn);
 			updateCamionList();
 			lastDate = dbu.getDataAggiornamento();
 
@@ -281,8 +286,9 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 
 
 	private Date checkAndCreateDate(String s) throws NumberFormatException{
-		String[] tmp;
-		boolean giornoOK = false, meseOK = false, annoOK = false; 
+		*/
+/*String[] tmp;
+		boolean giornoOK = false, meseOK = false, annoOK = false;
 		int giornoTMP = -1, meseTMP = -1, annoTMP = -1;
 		Date result = null;
 
@@ -300,6 +306,9 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 		} else throw new NumberFormatException();
 
 		return result;
+		*//*
+
+		return null;
 	}
 
 	public static void reloadTableModel(Date d) {
@@ -336,15 +345,18 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 				logger.info("RIGA MODIFICATA: "+row+"   COLONNA MODIFICATA: "+col);
 				v = tm.getElementAt(row);
 				if(col == 0){
-					/*if(tm.getType() == Viaggio.NORD && sudTableModel.existsCamion(v.getCamion()) > 0)
+					*/
+/*if(tm.getType() == Viaggio.NORD && sudTableModel.existsCamion(v.getCamion()) > 0)
 						throw new IllegalArgumentException("Esiste gia questo camion in questa data");
 					else if(tm.getType() == Viaggio.SUD && nordTableModel.existsCamion(v.getCamion()) > 0)
-						throw new IllegalArgumentException("Esiste gia questo camion in questa data");*/
+						throw new IllegalArgumentException("Esiste gia questo camion in questa data");*//*
+
 				}
 				logger.info(v.toString());
-				(new UpdateWorker2(v, col, dbu)).execute();
+				//(new ViaggiUpdateWorker(v, col, dbu)).execute();
 			}else if(e.getType() == TableModelEvent.INSERT){
-				if(tm.getType() == Viaggio.NORD){
+				*/
+/*if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
 					viaggiNordTable.requestFocus();
 					viaggiNordTable.changeSelection(row-1, 0, false, false);
 					viaggiNordTable.editCellAt(row-1, 0);
@@ -352,7 +364,8 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 					viaggiSudTable.changeSelection(row-1, 0, false, false);
 					viaggiSudTable.editCellAt(row-1, 0);
 					viaggiSudTable.requestFocus();
-				}
+				}*//*
+
 				logger.info("ADD ROW!");
 				v = tm.getElementAt(row-1);
 				//logger.info(modifiche.toString());
@@ -372,7 +385,8 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 	
 	private void formattaTabelleViaggi(){
 		
-		camionCombo = new JComboBox<>();
+		*/
+/*camionCombo = new JComboBox<>();
 		for(Camion c : camions){
 			camionCombo.addItem(c.getTarga());
 		}
@@ -403,7 +417,8 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 				col = viaggiSudTable.getColumnModel().getColumn(i);
 				col.setPreferredWidth(20);
 			}
-		}
+		}*//*
+
 
 	}
-}
+}*/

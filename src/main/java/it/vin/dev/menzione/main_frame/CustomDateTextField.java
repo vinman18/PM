@@ -1,11 +1,10 @@
-package it.vin.dev.menzione.MainFrame;
+package it.vin.dev.menzione.main_frame;
 
 import javax.swing.*;
 import javax.swing.text.MaskFormatter;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.text.ParseException;
-import java.util.logging.Level;
 
 /**
  * Created by Vincenzo on 17/10/2016.

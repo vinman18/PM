@@ -1,10 +1,15 @@
 package it.vin.dev.menzione.frame;
 
 import java.sql.Date;
+import java.util.List;
 import java.util.Vector;
-import java.util.logging.Logger;
 import javax.swing.table.AbstractTableModel;
+
+import it.vin.dev.menzione.Consts;
+import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ViaggiTableModel extends AbstractTableModel {
 
@@ -12,40 +17,40 @@ public class ViaggiTableModel extends AbstractTableModel {
 	private static final long serialVersionUID = -8602306676258552807L;
 	protected Vector<Viaggio> viaggi;
 	private String[] colonne;
-	protected String type;
+	protected int type;
 	private Date currentDate;
 	private Logger log;
 
+	private List<Camion> camions;
 
 	public Vector<Viaggio> getData(){
 		return viaggi;
 	}
 
-	public ViaggiTableModel(String type) {
+	public ViaggiTableModel(int type, List<Camion> camions) {
 		this.type = type;
+		this.camions = camions;
 		viaggi = new Vector<>();
-		log = Logger.getLogger("global");
-		if(type == Viaggio.NORD){
-			String[] tmp = {"Targa", "Caratteristiche", "Autista", "Note", ""};
-			colonne = tmp;
+		log = LogManager.getLogger(this.getClass());
+		if(type == Consts.VIAGGI_TM_TYPE_NORD){
+			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", ""};
 		}else{
-			String[] tmp = {"Targa", "Caratteristiche", "Autista", "Note", "Litri", ""};
-			colonne = tmp;
+			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", "Litri", ""};
 		}
 
 	}
 
-	public ViaggiTableModel(Vector<Viaggio> viaggi, String type) {
-		this.type = type;
-		this.viaggi = viaggi;
+	public ViaggiTableModel(Vector<Viaggio> viaggi, int type, List<Camion> camions) {
+		this(type, camions);
+	    this.viaggi = viaggi;
+        /*this.type = type;
+        this.camions = camions;
 		log = Logger.getLogger("global");
-		if(type == Viaggio.NORD){
-			String[] tmp = {"Targa", "Caratteristiche", "Autista", "Note", ""};
-			colonne = tmp;
+		if(Viaggio.NORD.equals(type)){
+			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", ""};
 		}else{
-			String[] tmp = {"Targa", "Caratteristiche", "Autista", "Note", "Litri", ""};
-			colonne = tmp;
-		}
+			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", "Litri", ""};
+		}*/
 	}
 
 	public void setData(Vector<Viaggio> viaggi){
@@ -62,11 +67,11 @@ public class ViaggiTableModel extends AbstractTableModel {
 		this.currentDate = currentDate;
 	}
 
-	public String getType() {
+	public int getType() {
 		return type;
 	}
 
-	public void setType(String type) {
+	public void setType(int type) {
 		this.type = type;
 	}
 
@@ -94,7 +99,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 	public Object getValueAt(int row, int col) {
 		Viaggio v = viaggi.elementAt(row);
 		try {
-			if(type == Viaggio.NORD){
+			if(type == Consts.VIAGGI_TM_TYPE_NORD){
 				switch(col){
 				case 0: return v.getCamion().getTarga();
 				case 1: return v.getCamion().getCaratteristiche();
@@ -102,7 +107,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 				case 3: return v.getNote();
 				case 4: return v.isSelezionato();
 				}
-			}else if(type == Viaggio.SUD){
+			}else if(type == Consts.VIAGGI_TYPE_SUD){
 				switch(col){
 				case 0: return v.getCamion().getTarga();
 				case 1: return v.getCamion().getCaratteristiche();
@@ -120,9 +125,9 @@ public class ViaggiTableModel extends AbstractTableModel {
 
 	@Override
 	public void setValueAt(Object value, int row, int col){
-		if(type == Viaggio.NORD){
+		if(type == Consts.VIAGGI_TM_TYPE_NORD){
 			if(col == 0){
-				Camion c = MainFrame.findCamionByTarga(value.toString());
+				Camion c = ViaggiUtils.findCamionByTarga(camions, value.toString());
 				viaggi.elementAt(row).setCamion(c);
 			} else if(col == 2){
 				viaggi.elementAt(row).setAutista(value.toString());
@@ -136,7 +141,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 			}
 		}else{
 			if(col == 0){
-				Camion c = MainFrame.findCamionByTarga(value.toString());
+				Camion c = ViaggiUtils.findCamionByTarga(camions, value.toString());
 				viaggi.elementAt(row).setCamion(c);
 			} else if(col == 2){
 				viaggi.elementAt(row).setAutista(value.toString());
@@ -157,7 +162,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 
 	@Override
 	public boolean isCellEditable(int row, int col){
-		if(col == 0 & getValueAt(row, col) == "" ) return true;
+		if(col == 0 && getValueAt(row, col).toString().isEmpty()) return true;
 		else if(col >= 2) return true;
 		else return false;
 	}
@@ -171,17 +176,12 @@ public class ViaggiTableModel extends AbstractTableModel {
 		return null;
 	}
 
-	/*@Override
-	public void fireTableRowsInserted(int firstRow, int lastRow){
-		super.fireTableRowsInserted(firstRow, lastRow);
-		log.severe("Eseguito firetablerowsinserted in " + getClass().getName());
-	}*/
-
 
 	public void addRow(Viaggio v){
-		if(v==null){
+		if(v == null){
 			Viaggio nuovo = new Viaggio();
-			nuovo.setPosizione(type);
+			String posizione = type == Consts.VIAGGI_TM_TYPE_NORD ? Viaggio.NORD : Viaggio.SUD;
+			nuovo.setPosizione(posizione);
 			nuovo.setData(currentDate);
 			viaggi.addElement(nuovo);
 			fireTableRowsInserted(getRowCount() , getRowCount());
@@ -192,9 +192,9 @@ public class ViaggiTableModel extends AbstractTableModel {
 	}
 
 	public Viaggio removeRow(int row){
+		fireTableRowsDeleted(row, row);
 		Viaggio rimosso = viaggi.elementAt(row);
 		viaggi.removeElementAt(row);
-		fireTableRowsDeleted(row, row);
 		return rimosso;
 	}
 
@@ -207,4 +207,12 @@ public class ViaggiTableModel extends AbstractTableModel {
 
 		return result;
 	}
+
+	public List<Camion> getCamions() {
+	    return camions;
+    }
+
+	public void setCamions(List<Camion> camions) {
+	    this.camions = camions;
+    }
 }

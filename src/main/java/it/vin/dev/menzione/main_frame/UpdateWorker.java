@@ -1,4 +1,4 @@
-package it.vin.dev.menzione.frame;
+package it.vin.dev.menzione.main_frame;
 
 import java.sql.SQLException;
 import java.util.Vector;
@@ -8,11 +8,11 @@ import it.vin.dev.menzione.logica.*;
 
 public class UpdateWorker implements Runnable {
 
-	Vector<Modifica<Viaggio>> modifiche;
-	DbUtil dbu;
-	Logger log;
+	private Vector<Modifica<Viaggio>> modifiche;
+	private DatabaseService dbu;
+	private Logger log;
 	
-	public UpdateWorker(Vector<Modifica<Viaggio>> modifiche, DbUtil dbu){
+	public UpdateWorker(Vector<Modifica<Viaggio>> modifiche, DatabaseService dbu){
 		this.modifiche = modifiche;
 		this.dbu = dbu;
 		log = Logger.getGlobal();

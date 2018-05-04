@@ -1,56 +1,45 @@
 package it.vin.dev.menzione.frame;
 
-import java.awt.BorderLayout;
+import java.awt.*;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
+import it.vin.dev.menzione.Msg;
+import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.Camion;
-import it.vin.dev.menzione.logica.Configuration;
-import it.vin.dev.menzione.logica.DbUtil;
-import it.vin.dev.menzione.logica.DbUtilFactory;
+import it.vin.dev.menzione.logica.DatabaseService;
 
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
-import java.awt.FlowLayout;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Vector;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.border.TitledBorder;
 
 import com.mysql.jdbc.MysqlDataTruncation;
+import it.vin.dev.menzione.main_frame.ReloadCallback;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.swing.border.LineBorder;
-import java.awt.Color;
-import java.awt.Component;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.GridLayout;
 import java.awt.event.ItemListener;
 import java.awt.event.ItemEvent;
-import java.awt.event.WindowAdapter;
 import javax.swing.JTextArea;
 import javax.swing.UIManager;
-import java.awt.Dimension;
 import javax.swing.SwingConstants;
-import java.awt.Font;
 
 public class AggiungiCamionFrame extends JFrame implements WindowListener {
 
@@ -58,40 +47,33 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 	private JPanel contentPane;
 	private JTextField txtFieldTarga;
 	private JTextField txtFieldCaratt;
-	private DbUtil dbu;
+	private DatabaseService dbu;
 	private Vector<Camion> camions;
 	private JComboBox<Camion> camionComboBox;
 	private JTextArea resultLabel;
 	private JTextField txtCaratt;
-	private MainFrame parent;
+	private ReloadCallback callback;
 	private Logger logger;
 
 	/**
 	 * Create the frame.
 	 */
-	public AggiungiCamionFrame(MainFrame parent) {
-		addWindowListener(new WindowAdapter() {
+	public AggiungiCamionFrame(ReloadCallback callback) {
+		/*addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosing(WindowEvent arg0) {
 				try {
 					dbu.closeConnection();
 				} catch (SQLException e) {
 					e.printStackTrace();
-					logger.log(Level.SEVERE, e.getMessage(), e);
+					logger.error(e.getMessage(), e);
 				}
 			}
-		});
-		logger = Logger.getGlobal();
-		try {
-			FileHandler fh = new FileHandler(Configuration.logfile+"-AggiungiCamionFrame.log", true);
-			fh.setLevel(Level.SEVERE);
-			logger.addHandler(fh);
-		} catch (SecurityException e2) {
-			e2.printStackTrace();
-		} catch (IOException e2) {
-			e2.printStackTrace();
-		}
-		this.parent = (MainFrame) parent;
+		});*/
+		logger = LogManager.getLogger(AggiungiCamionFrame.class);
+        setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
+
+        this.callback = callback;
 		setResizable(false);
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(100, 100, 320, 390);
@@ -178,7 +160,7 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 				targa = targa.toUpperCase();
 				caratt = caratt.toUpperCase();
 
-				if(targa.compareTo("") != 0 && caratt.compareTo("") != 0){
+				if(!targa.trim().isEmpty() && !caratt.trim().isEmpty()){
 					Camion c = new Camion(targa, caratt);
 
 					if(!findCamionByTarga(targa)){
@@ -186,23 +168,16 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 							dbu.aggiungiCamion(c);
 							updateCamionList();
 							resultLabel.setText("Aggiunta effettuata con successo");
-							parent.updateCamionList();
+							callback.updateCamionList();
 						} catch(MysqlDataTruncation e){
 							resultLabel.setText("ATTENZIONE: la targa deve avere 7 caratteri"
 									+ " (spazi inclusi)");
 						} catch (SQLException e) {
-							resultLabel.setText("ATTENZIONE: problemi di "
-									+ "connessione al server. Impossibile aggiungere\n"
-									+ "Codice errore:"+e.getErrorCode()+"\n"+e.getMessage());
-							e.printStackTrace();
-							logger.log(Level.SEVERE, e.getMessage(), e);
+							databaseError(e);
 						}
 					}else{
-						resultLabel.setText("ATTENZIONE: Esiste gi� un camion con la stessa targa");
+						resultLabel.setText("ATTENZIONE: Esiste già un camion con la stessa targa");
 					}
-
-
-
 				}else{
 					resultLabel.setText("ATTENZIONE: i campi non sono compliati");
 				}
@@ -221,7 +196,7 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 		resultLabel.setBackground(UIManager.getColor("Label.background"));
 		resultLabel.setAutoscrolls(true);
 		panel_1.add(resultLabel, BorderLayout.SOUTH);
-		camionComboBox = new JComboBox<Camion>();
+		camionComboBox = new JComboBox<>();
 		camionComboBox.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent arg0) {
 				if(arg0.getStateChange() == ItemEvent.SELECTED){
@@ -235,9 +210,6 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 		panel_4.add(panel_3);
 		panel_3.setBorder(new TitledBorder(new LineBorder(new Color(130, 135, 144)), "Modifica Camion", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
 
-
-
-
 		panel_3.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
 		JLabel lblSelezionareUnCamion = new JLabel("Selezionare un camion:");
@@ -250,23 +222,16 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 		btnRimuovi.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				Camion camion = (Camion) camionComboBox.getSelectedItem();
-				if (JOptionPane.showConfirmDialog(null, 
-						"Sei sicuro di voler eliminare il camion con targa: " + camion.getTarga()+
-						"?\nQuesta operazione non pu� essere annullata", "Sei sicuro?", 
-						JOptionPane.YES_NO_OPTION,
-						JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION){
-
+                int result = Msg.yesno(null, "Sei sicuro di voler eliminare il camion con targa: " + camion.getTarga()+
+                        "?\nQuesta operazione non può essere annullata");
+                if (result == JOptionPane.YES_OPTION){
 					try {
 						dbu.rimuoviCamion(camion);
 						updateCamionList();
-						parent.updateCamionList();
+						callback.updateCamionList();
 					} catch (SQLException e1) {
-						resultLabel.setText("ATTENZIONE: problemi di connessione al database.\n"
-								+ "Codice errore:"+e1.getErrorCode()+"\n"+e1.getMessage());
-						e1.printStackTrace();
-						logger.log(Level.SEVERE, e1.getMessage(), e1);
+						databaseError(e1);
 					}
-
 				}
 			}
 		});
@@ -290,17 +255,16 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 				Camion c = (Camion) camionComboBox.getSelectedItem();
 				String car = txtCaratt.getText();
 				if(car.compareTo("") == 0){
-					JOptionPane.showMessageDialog(root, "Il campo caratteristiche non pu� essere vuoto",
-							"ATTENZIONE", JOptionPane.WARNING_MESSAGE);
+				    Msg.warn(root, "Il campo caratteristiche non può essere vuoto");
 				}else{
 					c.setCaratteristiche(txtCaratt.getText());
 				}
 				try {
 					dbu.modificaCamion(c);
-					parent.updateCamionList();
-					JOptionPane.showMessageDialog(root, "Modifica salvata con successo");
+					callback.updateCamionList();
+					Msg.info(root, "Modifica salvata con successo");
 				} catch (SQLException e) {
-					logger.log(Level.SEVERE, e.getMessage(), e);
+					logger.error(e.getMessage(), e);
 					e.printStackTrace();
 					resultLabel.setText("Errore di collegamento al database.");
 				}
@@ -308,16 +272,21 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 		});
 		panel_3.add(btnSalva);
 		try {
-			dbu = DbUtilFactory.createDbUtil();
+			dbu = DatabaseService.create();
 			updateCamionList();
 		} catch (SQLException e) {
-			logger.log(Level.SEVERE, e.getMessage(), e);
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, "Errore di collegamento col"
-					+ "database.\nInformazioni sull'errore:\n" +
-					"Codice errore: "+e.getErrorCode()+"\n"+e.getMessage(), "ERRORE", 
-					JOptionPane.ERROR_MESSAGE);
+			databaseError(e);
 		}
+
+		addWindowListener(this);
+	}
+
+	private void databaseError(SQLException e) {
+		logger.error(e.getMessage(), e);
+		e.printStackTrace();
+		Msg.error(this, "Errore di collegamento col"
+                + "database.\nInformazioni sull'errore:\n" +
+                "Codice errore: "+e.getErrorCode()+"\n"+e.getMessage());
 	}
 
 	private void updateCamionList() throws SQLException{
@@ -347,17 +316,21 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 	@Override
 	public void windowClosed(WindowEvent e) {
 		try {
-			parent.updateCamionList();
+			callback.updateCamionList();
 		} catch (SQLException e1) {
 			e1.printStackTrace();
-			logger.log(Level.SEVERE, e1.getMessage(), e1);
+			logger.error(e1.getMessage(), e1);
 		}
 
 	}
 
 	@Override
 	public void windowClosing(WindowEvent e) {
-
+        try {
+            dbu.closeConnection();
+        } catch (SQLException ex) {
+            databaseError(ex);
+        }
 	}
 
 	@Override

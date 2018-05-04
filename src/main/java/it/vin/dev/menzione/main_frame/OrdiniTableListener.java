@@ -1,46 +1,37 @@
-package it.vin.dev.menzione.frame;
+package it.vin.dev.menzione.main_frame;
 
-import java.io.IOException;
 import java.sql.SQLException;
-import java.util.logging.FileHandler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import javax.swing.JOptionPane;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 
-import it.vin.dev.menzione.logica.Configuration;
-import it.vin.dev.menzione.logica.DbUtil;
-import it.vin.dev.menzione.logica.DbUtilFactory;
+import it.vin.dev.menzione.logica.DatabaseService;
 import it.vin.dev.menzione.logica.Ordine;
+import it.vin.dev.menzione.workers.OrdiniUpdateWorker;
+import it.vin.dev.menzione.workers.UpdateWorkerListener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class OrdiniTableListener implements TableModelListener {
 
-	private DbUtil dbu;
-	private Logger logger;
+	//private DatabaseService dbu;
+    private DatabaseService dbs;
+    private UpdateWorkerListener<Ordine> listener;
 	
-	public OrdiniTableListener() throws SQLException {
-		dbu = DbUtilFactory.createDbUtil();
-		logger = Logger.getGlobal();
-		try {
-			FileHandler fh = new FileHandler(Configuration.getLogfile()+"-OrdiniTableModelListener.log",
-					true);
-			logger.addHandler(fh);
-		} catch (SecurityException | IOException e) {
-			e.printStackTrace();
-		}
-		
-		
+	public OrdiniTableListener(DatabaseService dbs) throws SQLException {
+		//dbu = DatabaseService.create();
+        this.dbs = dbs;
 	}
 	
-	public void closeConnection(){
+	/*public void closeConnection(){
 		try {
 			dbu.closeConnection();
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
-	}
+	}*/
+
 
 	@Override
 	public void tableChanged(TableModelEvent arg0) {
@@ -54,15 +45,20 @@ public class OrdiniTableListener implements TableModelListener {
 		if(type == TableModelEvent.UPDATE){
 			if(col >=0){
 				Ordine o = source.getElementAt(row);
-				try {
+				/*try {
 					dbu.modificaOrdine(o, col);
 				} catch (SQLException e) {
-					logger.log(Level.SEVERE, e.getMessage(), e);
+					logger.error(e.getMessage(), e);
 					e.printStackTrace();
 					JOptionPane.showMessageDialog(null, "Impossibile colleagarsi al database"+
 							"Codice errore:"+e.getErrorCode()+"\n"+e.getMessage(),"ERRORE", 
 							JOptionPane.ERROR_MESSAGE);
-				}
+				}*/
+
+                OrdiniUpdateWorker.connect(dbs)
+                        .update(o, col)
+                        .onResult(listener)
+                        .execute();
 			}
 		}else if(type == TableModelEvent.INSERT){
 			/*Ordine o = source.getElementAt(row);
@@ -77,4 +73,7 @@ public class OrdiniTableListener implements TableModelListener {
 
 	}
 
+    public void setUpdateWorkerListener(UpdateWorkerListener<Ordine> listener) {
+        this.listener = listener;
+    }
 }

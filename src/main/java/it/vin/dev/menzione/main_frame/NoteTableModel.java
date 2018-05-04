@@ -1,21 +1,21 @@
-package it.vin.dev.menzione.frame;
+package it.vin.dev.menzione.main_frame;
 
 import java.util.Vector;
-import java.util.logging.Logger;
 
 import javax.swing.table.AbstractTableModel;
 
 import it.vin.dev.menzione.logica.Nota;
-import it.vin.dev.menzione.logica.Ordine;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class NoteTableModel extends AbstractTableModel {
-
 
 	private static final long serialVersionUID = 3190609378048624032L;
 	protected Vector<Nota> note;
 	private String[] colonne = {"Testo"};
-	private Logger log = Logger.getGlobal();
-	
+	private Logger log = LogManager.getLogger(this.getClass());
+
+
 	public Vector<Nota> getData(){
 		return note;
 	}

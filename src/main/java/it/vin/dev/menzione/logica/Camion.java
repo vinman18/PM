@@ -62,9 +62,4 @@ public class Camion implements Serializable {
 	public void setTarga(String targa) {
 		this.targa = targa;
 	}
-	
-	
-	
-	
-	
 }

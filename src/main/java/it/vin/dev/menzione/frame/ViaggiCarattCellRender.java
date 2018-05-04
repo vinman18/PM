@@ -24,7 +24,7 @@ public class ViaggiCarattCellRender extends DefaultTableCellRenderer {
         if(arg1 != null){
             f.setText(arg1.toString());
             String string = arg1.toString();
-            if(string.contains(" " + RA + " ")){
+            if(string.contains(" " + RA)){
                 int indexOf = string.indexOf(RA);
                 try {
                     f.getHighlighter().addHighlight(indexOf,indexOf+RA.length(),
@@ -32,7 +32,7 @@ public class ViaggiCarattCellRender extends DefaultTableCellRenderer {
                 } catch (BadLocationException e) {
                     e.printStackTrace();
                 }
-            }else if(string.contains(" " + RF + " ")){
+            }else if(string.contains(" " + RF)){
                 int indexOf = string.indexOf(RF);
                 try {
                     f.getHighlighter().addHighlight(indexOf,indexOf+RF.length(),
@@ -44,11 +44,11 @@ public class ViaggiCarattCellRender extends DefaultTableCellRenderer {
                 int indexOf = string.indexOf(C);
                 try {
                     f.getHighlighter().addHighlight(indexOf,indexOf+C.length(),
-                    		new DefaultHighlighter.DefaultHighlightPainter(Color.GREEN));
+                    		new DefaultHighlighter.DefaultHighlightPainter(new Color(160,255,160)));
                 } catch (BadLocationException e) {
                     e.printStackTrace();
                 }
-            }else if(string.contains(" " + C_DOT + " ")){
+            }else if(string.contains(" " + C_DOT)){
                 int indexOf = string.indexOf(C_DOT);
                 try {
                     f.getHighlighter().addHighlight(indexOf,indexOf+C_DOT.length(),

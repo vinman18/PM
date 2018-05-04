@@ -6,17 +6,22 @@ import java.sql.Date;
 public class Viaggio implements Serializable {
 
 	private static final long serialVersionUID = -8003647121714337959L;
-	private long id;
-	private Camion camion;
-	private String autista;
-	private String posizione;
-	private String note;
-	private Date data;
-	private int litriB;
-	private boolean selezionato;
-	public final static String NORD = "Nord";
-	public final static String SUD = "Sud";
-	
+    public final static String NORD = "Nord";
+    public final static String SUD = "Sud";
+
+    public final static int COL_PINNED = 99;
+
+    private long id;
+    private Camion camion;
+    private String autista;
+    private String posizione;
+    private String note;
+    private Date data;
+    private int litriB;
+    private boolean selezionato;
+    private boolean pinned;
+
+
 	@Override
 	public String toString() {
 		return "Viaggio [id=" + id + ", camion=" + camion + ", autista=" + autista + ", posizione=" + posizione
@@ -28,7 +33,7 @@ public class Viaggio implements Serializable {
 		this.autista = autista;
 		this.posizione = posizione;
 		this.data = data;
-		this.note = new String();
+		this.note = "";
 		this.litriB = 0;
 		this.setSelezionato(false);
 		this.id = id;
@@ -39,7 +44,7 @@ public class Viaggio implements Serializable {
 		this.autista = autista;
 		this.posizione = posizione;
 		this.data = data;
-		this.note = new String();
+		this.note = "";
 		this.setSelezionato(false);
 		this.id = id;
 	}
@@ -163,4 +168,11 @@ public class Viaggio implements Serializable {
 		return true;
 	}
 
+    public boolean isPinned() {
+        return pinned;
+    }
+
+    public void setPinned(boolean pinned) {
+        this.pinned = pinned;
+    }
 }
