@@ -12,7 +12,6 @@ import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.database_helper.DatabaseHelperListener;
-import it.vin.dev.menzione.database_helper.IDatabaseClient;
 import it.vin.dev.menzione.frame.*;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.workers.NoteUpdateWorker;
@@ -47,6 +46,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     public static final String SUD_UNPIN_COMMAND = "sud_unpin";
     public static final String NORD_UNPIN_COMMAND = "nord_unpin";
 
+    public static final String ORDINI_DISCESA_COMMAND = "ordine_discesa";
+    public static final String ORDINI_SALITA_COMMAND = "ordine_salita";
+
     private Date lastDateFromDb;
     private DatabaseService dbs;
 
@@ -70,7 +72,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private JScrollPane sudPinScrollPane;
     private ViaggiJTable viaggiSudPinTable;
     private JSplitPane viaggiSudSplitPane;
-    private ViaggiTableModel nordTableModel;
+//    private ViaggiTableModel nordTableModel;
     private ViaggiTableModel viaggiNordPinTableModel;
     private ViaggiTableModel viaggiSudPinTableModel;
     private ViaggiTableModel sudTableModel;
@@ -252,6 +254,26 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     };
 
+    private final ActionListener openCamionFrameAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            JButton b = (JButton) arg0.getSource();
+            MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
+            JFrame aggiungiCamionFrame = new AggiungiCamionFrame(root);
+            aggiungiCamionFrame.setVisible(true);
+        }
+    };
+
+    private final ActionListener openNewDateFrameAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            JButton b = (JButton) arg0.getSource();
+            MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
+            JFrame inserisciGiornataFrame = new AggiungiDataFrame(root);
+            inserisciGiornataFrame.setVisible(true);
+        }
+    };
+
     private final ActionListener goToLastDateAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -292,6 +314,50 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     };
 
+    private final ActionListener addOrderAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            Component source = (Component) arg0.getSource();
+            MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
+            String type = arg0.getActionCommand().equals(ORDINI_DISCESA_COMMAND)
+                    ? Ordine.DISCESA
+                    : Ordine.SALITA;
+
+            if(currentDate!=null){
+                AggiungiOrdineFrame fr;
+                try {
+                    fr = new AggiungiOrdineFrame(root, type, currentDate);
+                    fr.setResultListener(ordiniUpdateResultListener);
+                    fr.setVisible(true);
+                } catch (SQLException e) {
+                    logDatabaseError(e);
+                }
+            }else{
+                Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire\n"
+                        + "un ordine.\nControllare la data inserita.");
+            }
+        }
+    };
+
+    private final ActionListener removeOrderAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            OrdiniTable table = arg0.getActionCommand().equals(ORDINI_DISCESA_COMMAND)
+                    ? ordiniDiscesaTable
+                    : ordiniSalitaTable;
+
+            int sel = table.getSelectedRow();
+            OrdiniTableModel tm = (OrdiniTableModel) table.getModel();
+            Ordine o = tm.removeRow(sel);
+            try {
+                dbs.rimuoviOrdine(o);
+            } catch (SQLException e) {
+                tm.addRow(o);
+                logDatabaseError(e);
+            }
+        }
+    };
+
     private final ActionListener aggiungiNotaAction = new ActionListener() {
         public void actionPerformed(ActionEvent arg0) {
             Component source = (Component) arg0.getSource();
@@ -325,6 +391,21 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                         + "una nota.\nControllare la data inserita.");
             }
 
+        }
+    };
+
+    private final ActionListener deleteNoteAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            int sel = noteTable.getSelectedRow();
+            NoteTableModel tm = (NoteTableModel) noteTable.getModel();
+            Nota n = tm.removeRow(sel);
+            try {
+                dbs.rimuoviNota(n);
+            } catch (SQLException e1) {
+                tm.addRow(n);
+                logDatabaseError(e1);
+            }
         }
     };
 
@@ -424,7 +505,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     };
 
-    private ActionListener aggiornaAction = new ActionListener() {
+    private ActionListener reloadAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
             loadDate(currentDate, MainFrame.RELOAD_RESETCONNECTION);
@@ -468,7 +549,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             switch (e.getActionCommand()) {
                 case NORD_PIN_COMMAND:
                     table = viaggiNordTable;
-                    tableModel = nordTableModel;
+                    tableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
                     pinTableModel = viaggiNordPinTableModel;
                     break;
                 case SUD_PIN_COMMAND:
@@ -502,7 +583,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             switch (e.getActionCommand()) {
                 case NORD_UNPIN_COMMAND:
                     table = viaggiNordPinTable;
-                    tableModel = nordTableModel;
+                    tableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
                     pinTableModel = viaggiNordPinTableModel;
                     break;
                 case SUD_UNPIN_COMMAND:
@@ -529,6 +610,64 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     };
 
+    private final ActionListener sudAddAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            sudTableModel.addRow(null);
+        }
+    };
+
+    private final ActionListener sudRemoveAction = new ActionListener() {
+        @SuppressWarnings("Duplicates")
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            int selected = viaggiSudTable.getSelectedRow();
+            if(selected < 0) {
+                return;
+            }
+
+            if(viaggiSudTable.isEditing()){
+                viaggiSudTable.getCellEditor().cancelCellEditing();
+            }
+            Viaggio rimosso = sudTableModel.removeRow(selected);
+            try {
+                dbs.rimuoviViaggio(rimosso);
+            } catch (SQLException e) {
+                logDatabaseError(e);
+            }
+        }
+    };
+
+    private final ActionListener nordAddAction = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            ((ViaggiTableModel) viaggiNordTable.getModel()).addRow(null);
+        }
+    };
+
+    private final ActionListener nordRemoveAction = new ActionListener() {
+        @SuppressWarnings("Duplicates")
+        @Override
+        public void actionPerformed(ActionEvent arg0) {
+            ViaggiTableModel nordTableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
+
+            int selected = viaggiNordTable.getSelectedRow();
+            if(selected < 0) {
+                return;
+            }
+
+            if(viaggiNordTable.isEditing()){
+                viaggiNordTable.getCellEditor().cancelCellEditing();
+            }
+            Viaggio rimosso = nordTableModel.removeRow(selected);
+            try {
+                dbs.rimuoviViaggio(rimosso);
+            } catch (SQLException e) {
+                logDatabaseError(e);
+            }
+        }
+    };
+
     private AbstractAction openConfigAction = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -545,6 +684,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         logger = LogManager.getLogger(MainFrame.class);
         lastDateFromDb = null;
         try {
+            logger.debug("Creating database connection...");
             dbs = DatabaseService.create();
             lastDateFromDb = dbs.getDataAggiornamento();
             camions = dbs.getCamion();
@@ -589,7 +729,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         setContentPane(contentPane);
         contentPane.setLayout(new BorderLayout(0, 0));
 
-        nordTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
+        //nordTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
         sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TYPE_SUD, camions);
 
         NorthPanel = new JPanel();
@@ -599,28 +739,43 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         NorthPanel.add(lblDateSelection);
 
         formattedTextField = new CustomDateTextField();
-
+        formattedTextField.addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                int code = e.getKeyCode();
+                if(code == KeyEvent.VK_ENTER){
+                    loadDateFromInsertedFormattedTextField();
+                } else {
+                    if(e.getComponent().getBackground() == Color.RED){
+                        e.getComponent().setBackground(Color.WHITE);
+                    }
+                }
+            }
+        });
         NorthPanel.add(formattedTextField);
 
         JButton btnFind = new JButton();
         try {
             Image searchIcon = ImageIO.read(getClass().getResource("/Icons/search16.png"));
-            //reloadButton.setIcon(new ImageIcon(reloadIcon.getScaledInstance(20, 20, Image.SCALE_SMOOTH)));
             btnFind.setIcon(new ImageIcon(searchIcon));
         } catch (IOException e) {
             logger.warn("Failed to load button icon", e);
         }
+        btnFind.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                loadDateFromInsertedFormattedTextField();
+            }
+        });
         NorthPanel.add(btnFind);
 
         JButton reloadButton = new JButton();
         try {
             Image reloadIcon = ImageIO.read(getClass().getResource("/Icons/reload16.png"));
-            //reloadButton.setIcon(new ImageIcon(reloadIcon.getScaledInstance(20, 20, Image.SCALE_SMOOTH)));
             reloadButton.setIcon(new ImageIcon(reloadIcon));
         } catch (IOException e) {
             logger.warn("Failed to load button icon", e);
         }
-        reloadButton.addActionListener(aggiornaAction);
+        reloadButton.addActionListener(reloadAction);
         NorthPanel.add(reloadButton);
 
         JButton btnGoToLastDate = new JButton("Ultima data");
@@ -645,7 +800,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         JButton btnDelete = new JButton();
         try {
             Image deleteIcon = ImageIO.read(getClass().getResource("/Icons/delete16.png"));
-            //reloadButton.setIcon(new ImageIcon(reloadIcon.getScaledInstance(20, 20, Image.SCALE_SMOOTH)));
             btnDelete.setIcon(new ImageIcon(deleteIcon));
         } catch (IOException e) {
             logger.warn("Failed to load button icon", e);
@@ -655,52 +809,17 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         NorthPanel.add(btnDelete);
 
         JButton btnGestisciCamion = new JButton("Gestisci Camion");
+        btnGestisciCamion.addActionListener(openCamionFrameAction);
         NorthPanel.add(btnGestisciCamion);
 
         JButton btnAggiungiGiornata = new JButton("Aggiungi Giornata");
+        btnAggiungiGiornata.addActionListener(openNewDateFrameAction);
         NorthPanel.add(btnAggiungiGiornata);
 
         btnEsportaQuestaData = new JButton("Esporta questa data");
-        NorthPanel.add(btnEsportaQuestaData);
         btnEsportaQuestaData.addActionListener(dateExportAction);
+        NorthPanel.add(btnEsportaQuestaData);
 
-        btnAggiungiGiornata.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                JButton b = (JButton) arg0.getSource();
-                MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
-                JFrame inserisciGiornataFrame = new AggiungiDataFrame(root);
-                inserisciGiornataFrame.setVisible(true);
-            }
-        });
-
-        btnGestisciCamion.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                JButton b = (JButton) arg0.getSource();
-                MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
-                JFrame aggiungiCamionFrame = new AggiungiCamionFrame(root);
-                aggiungiCamionFrame.setVisible(true);
-            }
-        });
-
-        btnFind.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                loadDateFromInsertedFormattedTextField();
-            }
-        });
-
-        formattedTextField.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                int code = e.getKeyCode();
-                if(code == KeyEvent.VK_ENTER){
-                    loadDateFromInsertedFormattedTextField();
-                } else {
-                    if(e.getComponent().getBackground() == Color.RED){
-                        e.getComponent().setBackground(Color.WHITE);
-                    }
-                }
-            }
-        });
 
         TablePanel = new JPanel();
         TablePanel.setAlignmentY(Component.TOP_ALIGNMENT);
@@ -785,19 +904,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         noteButtonPanel.add(panel_8, BorderLayout.EAST);
 
         NoteRemoveButton = new JButton("-");
-        NoteRemoveButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                int sel = noteTable.getSelectedRow();
-                NoteTableModel tm = (NoteTableModel) noteTable.getModel();
-                Nota n = tm.removeRow(sel);
-                try {
-                    dbs.rimuoviNota(n);
-                } catch (SQLException e1) {
-                    tm.addRow(n);
-                    logDatabaseError(e1);
-                }
-            }
-        });
+        NoteRemoveButton.addActionListener(deleteNoteAction);
         panel_8.add(NoteRemoveButton);
 
         noteAddButton = new JButton("+");
@@ -818,54 +925,15 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         panel_4.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
         ordiniDiscesaRimuoviButton = new JButton("-");
-        ordiniDiscesaRimuoviButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                Component source = (Component) e.getSource();
-                MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
-                int sel = ordiniDiscesaTable.getSelectedRow();
-                OrdiniTableModel tm = (OrdiniTableModel) ordiniDiscesaTable.getModel();
-                Ordine o = tm.removeRow(sel);
-                try {
-                    dbs.rimuoviOrdine(o);
-                } catch (SQLException e1) {
-                    tm.addRow(o);
-                    logDatabaseError(e1);
-                }
-            }
-        });
+        ordiniDiscesaRimuoviButton.addActionListener(removeOrderAction);
+        ordiniDiscesaRimuoviButton.setActionCommand(ORDINI_DISCESA_COMMAND);
+
         panel_4.add(ordiniDiscesaRimuoviButton);
 
         ordiniDiscesaAggiungiButton = new JButton("+");
-        ordiniDiscesaAggiungiButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                Component source = (Component) e.getSource();
-                MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
-                /*String s = selectedDateLbl.getText();
-                s = s.replace('-', '/');
-                Date d = null;
-                try{
-                    d = ViaggiUtils.checkAndCreateDate(s);
-                }catch(NumberFormatException e1){
-                    Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire\n"
-                            + "un ordine.\nControllare la data inserita.");
-                }*/
-                if(currentDate!=null){
-                    AggiungiOrdineFrame fr;
-                    try {
-                        fr = new AggiungiOrdineFrame(root, Ordine.DISCESA, currentDate);
-                        fr.setResultListener(ordiniUpdateResultListener);
-                        fr.setVisible(true);
-                    } catch (SQLException e1) {
-                        logDatabaseError(e1);
-                    }
+        ordiniDiscesaAggiungiButton.addActionListener(addOrderAction);
+        ordiniDiscesaAggiungiButton.setActionCommand(ORDINI_DISCESA_COMMAND);
 
-                }else{
-                    Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire\n"
-                            + "un ordine.\nControllare la data inserita.");
-                }
-
-            }
-        });
         panel_4.add(ordiniDiscesaAggiungiButton);
 
         scrollPane = new JScrollPane();
@@ -878,51 +946,12 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         ordiniDiscesaTableModel = new OrdiniTableModel();
         ordiniDiscesaTable.setModel(ordiniDiscesaTableModel);
         scrollPane.setViewportView(ordiniDiscesaTable);
-        ordiniSalitaAggiungiButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                Component source = (Component) arg0.getSource();
-                MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
-                /*String s = selectedDateLbl.getText();
-                s = s.replace('-', '/');
-                Date d = null;
-                try{
-                    d = ViaggiUtils.checkAndCreateDate(s);
-                }catch(NumberFormatException e){
-                    Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire\n"
-                            + "un ordine.\nControllare la data inserita.");
-                }*/
-                if(currentDate!=null){
-                    AggiungiOrdineFrame fr;
-                    try {
-                        fr = new AggiungiOrdineFrame(root, Ordine.SALITA, currentDate);
-                        fr.setResultListener(ordiniUpdateResultListener);
-                        fr.setVisible(true);
-                    } catch (SQLException e) {
-                        logDatabaseError(e);
-                    }
 
-                }else{
-                    Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire\n"
-                            + "un ordine.\nControllare la data inserita.");
-                }
-            }
-        });
+        ordiniSalitaAggiungiButton.addActionListener(addOrderAction);
+        ordiniSalitaAggiungiButton.setActionCommand(ORDINI_SALITA_COMMAND);
 
-        ordiniSalitaRimuoviButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                Component source = (Component) arg0.getSource();
-                MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
-                int sel = ordiniSalitaTable.getSelectedRow();
-                OrdiniTableModel tm = (OrdiniTableModel) ordiniSalitaTable.getModel();
-                Ordine o = tm.removeRow(sel);
-                try {
-                    dbs.rimuoviOrdine(o);
-                } catch (SQLException e) {
-                    tm.addRow(o);
-                    logDatabaseError(e);
-                }
-            }
-        });
+        ordiniSalitaRimuoviButton.addActionListener(removeOrderAction);
+        ordiniSalitaRimuoviButton.setActionCommand(ORDINI_SALITA_COMMAND);
 
         try {
             lis = new OrdiniTableListener(dbs);
@@ -965,32 +994,11 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
         sudRemoveButton = new JButton("-");
         panel_2.add(sudRemoveButton);
-        sudRemoveButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                int selected = viaggiSudTable.getSelectedRow();
-                if(selected < 0) {
-                    return;
-                }
-
-                if(viaggiSudTable.isEditing()){
-                    viaggiSudTable.getCellEditor().cancelCellEditing();
-                }
-                Viaggio rimosso = sudTableModel.removeRow(selected);
-                try {
-                    dbs.rimuoviViaggio(rimosso);
-                } catch (SQLException e) {
-                    logDatabaseError(e);
-                }
-            }
-        });
+        sudRemoveButton.addActionListener(sudRemoveAction);
 
         sudAddButton = new JButton("+");
         panel_2.add(sudAddButton);
-        sudAddButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                sudTableModel.addRow(null);
-            }
-        });
+        sudAddButton.addActionListener(sudAddAction);
 
         sudPinButton = new JButton("\u2193");
         sudPinButton.addActionListener(viaggiPinAction);
@@ -1023,9 +1031,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         viaggiNordTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
         TablePanel.add(viaggiNordTable);
 
-        viaggiNordTable.setModel(nordTableModel);
-        viaggiNordTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
-        viaggiNordTable.getModel().addTableModelListener(this);
+        //TODO: viaggi nord table model definition goes here
         nordTablePanel.setLayout(new BorderLayout(0, 0));
 
         nordTableButtonPanel = new JPanel();
@@ -1040,31 +1046,10 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         panel_1 = new JPanel();
 
         nordRemoveButton = new JButton("-");
-        nordRemoveButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                int selected = viaggiNordTable.getSelectedRow();
-                if(selected < 0) {
-                    return;
-                }
-
-                if(viaggiNordTable.isEditing()){
-                    viaggiNordTable.getCellEditor().cancelCellEditing();
-                }
-                Viaggio rimosso = nordTableModel.removeRow(selected);
-                try {
-                    dbs.rimuoviViaggio(rimosso);
-                } catch (SQLException e) {
-                    logDatabaseError(e);
-                }
-            }
-        });
+        nordRemoveButton.addActionListener(nordRemoveAction);
 
         nordAddButton = new JButton("+");
-        nordAddButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                nordTableModel.addRow(null);
-            }
-        });
+        nordAddButton.addActionListener(nordAddAction);
 
         nordPinButton = new JButton("\u2193");
         nordPinButton.addActionListener(viaggiPinAction);
@@ -1165,17 +1150,17 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         southPanel.add(infoTextField, BorderLayout.CENTER);
         contentPane.add(southPanel, BorderLayout.SOUTH);
 
-        try {
+
+        addListeners();
+        setLocationByPlatform(true);
+
+        loadDate(lastDateFromDb, MainFrame.RELOAD_STANDARD);
+/*        try {
             updateCamionList();
         }catch (SQLException e) {
             logDatabaseError(e);
         }
-
-        addListeners();
-        setLocationByPlatform(true);
-        formattaTabelle();
-
-        loadDate(lastDateFromDb, MainFrame.RELOAD_STANDARD);
+        formattaTabelle();*/
 //        try {
             /*reloadTableModel(lastDateFromDb, MainFrame.RELOAD_STANDARD);
             reloadOrdiniModel(lastDateFromDb);
@@ -1228,20 +1213,19 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     @Override
     public void updateCamionList() throws SQLException {
         camions = dbs.getCamion();
-        nordTableModel.setCamions(camions);
+        ((ViaggiTableModel) viaggiNordTable.getModel()).setCamions(camions);
         sudTableModel.setCamions(camions);
         formattaTabelle();
-        /*if(selectedDateLbl.getText().compareTo("") == 0){
-
-        }else{
-            Date d = ViaggiUtils.checkAndCreateDate(selectedDateLbl.getText().replace('-', '/'));
-            reloadTableModel(d, MainFrame.RELOAD_STANDARD);
-        }*/
     }
 
 
     @Override
     public void reloadTableModel(Date d, int option) throws SQLException {
+        viaggiNordTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions));
+        viaggiNordTable.getModel().addTableModelListener(this);
+        viaggiNordTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
+
+        ViaggiTableModel nordTableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
 
         if (option == RELOAD_RESETCONNECTION) {
             dbs.closeConnection();
@@ -1284,7 +1268,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
     @Override
     public void reloadOrdiniModel(Date d) throws SQLException {
-
         OrdiniTableModel tmSalita = (OrdiniTableModel) ordiniSalitaTable.getModel();
         OrdiniTableModel tmDiscesa = (OrdiniTableModel) ordiniDiscesaTable.getModel();
 
@@ -1348,6 +1331,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             reloadNote(d);
             currentDate = d;
             selectedDateLbl.setText(ViaggiUtils.createStringFromDate(currentDate));
+
+            formattaTabelle();
+            updateCamionList();
             resizePinTables();
         } catch (SQLException e) {
             logDatabaseError(e);
@@ -1364,11 +1350,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             formattedTextField.setBackground(Color.RED);
         }
         if(d != null){
-            //System.out.println(checkAndCreateDate(text).toString());
-
-                        /*reloadTableModel(d, MainFrame.RELOAD_STANDARD);
-                        reloadOrdiniModel(d);
-                        reloadNote(d);*/
             loadDate(d, MainFrame.RELOAD_STANDARD);
 
         }else{
@@ -1378,7 +1359,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
     @Override
     public void tableChanged(TableModelEvent e) {
-
         int col = e.getColumn();
         int row = e.getFirstRow();
 
@@ -1386,7 +1366,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             ViaggiTableModel tm = (ViaggiTableModel) e.getSource();
             Viaggio v;
             if(e.getType() == TableModelEvent.UPDATE){
-                logger.info("RIGA MODIFICATA: "+row+"   COLONNA MODIFICATA: "+col);
+                logger.info("RIGA MODIFICATA: "+ row +"   COLONNA MODIFICATA: " + col);
                 v = tm.getElementAt(row);
                 ViaggiUpdateWorker.connect(dbs)
                         .update(v, col)
@@ -1452,29 +1432,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                             }
                         })
                         .execute();
-                /*try {
-                    newId = dbs.aggiungiViaggio(nuovo);
-                } catch (SQLException e1) {
-                    logDatabaseError(e1);
-                }
-                logger.info("LAST ID INSERTED: "+newId);
-
-                if(newId > 0){
-                    tm.getElementAt(row-1).setId(newId);
-                    logger.info(tm.getElementAt(row-1).toString());
-                }else throw new IllegalArgumentException("Problemi nell'id del nuovo viaggio");
-
-                if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD) {
-                    viaggiNordTable.requestFocus();
-                    viaggiNordTable.changeSelection(row-1, 0, false, false);
-                    viaggiNordTable.editCellAt(row-1, 0);
-                }else {
-                    viaggiSudTable.changeSelection(row-1, 0, false, false);
-                    viaggiSudTable.editCellAt(row-1, 0);
-                    viaggiSudTable.requestFocus();
-                }
-                logger.info("ADD ROW!");
-                //logger.info(modifiche.toString());*/
             }else if(e.getType() == TableModelEvent.DELETE){
                 logger.info("ROW DELETED!");
             }

@@ -36,7 +36,7 @@ public class ViaggiUtils {
         InputStream defaultConfig = getDefaultConfig();
 
         if(!configFile.exists()){
-            logger.info("Non ho trovato il file config. Creo quello di default in " + configFile.getAbsolutePath());
+            logger.info("Config file not found. Copying default file in " + configFile.getAbsolutePath());
 
             Files.copy(defaultConfig,
                     configFile.toPath(),

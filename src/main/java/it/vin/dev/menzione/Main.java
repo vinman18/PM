@@ -21,6 +21,7 @@ import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.database_helper.IDatabaseHelper;
 import it.vin.dev.menzione.main_frame.MainFrame;
 import it.vin.dev.menzione.logica.Configuration;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -54,11 +55,13 @@ public class Main {
         }
 
         try {
+            logger.info("Loading config file...");
             ViaggiUtils.checkAndCreateConfigFile();
         } catch (IOException e) {
             logger.fatal(e);
         }
 
+        logger.info("Loading configuration...");
         Configuration conf = Configuration.getInstance();
 
         logger.debug(conf.getDbName());
@@ -71,10 +74,11 @@ public class Main {
         File policyFile = new File(serverPolicyPath);
 
         if(policyFile.exists()) {
+            logger.info("Loading policy file...");
             System.setProperty("java.security.policy", serverPolicyPath);
             Policy.getPolicy().refresh();
-
             System.setSecurityManager(new SecurityManager());
+            logger.info("Policy file loaded");
         } else {
             logger.warn("No policy file found on " + policyFile.getAbsolutePath());
             Msg.warn(null, "File di policy non trovato");
@@ -83,10 +87,12 @@ public class Main {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
                 try {
+                    logger.info("Loading MainFrame...");
                     MainFrame frame = new MainFrame();
 
-                    DatabaseClient client = null;
+/*                    DatabaseClient client = null;
                     try {
+                        logger.info("Connection with remote DatabaseHelper server on ip " + conf.getDbhelperHost());
                         String id = UUID.randomUUID().toString();
                         client = new DatabaseClient(id, System.getProperty("user.name"));
                         Registry registry = LocateRegistry.getRegistry(conf.getDbhelperHost(), conf.getDbhelperPort());
@@ -94,6 +100,7 @@ public class Main {
                         helper.connect(client, client.getId());
                         DatabaseHelperChannel.getInstance().setHelper(helper);
                         DatabaseHelperChannel.getInstance().setClient(client);
+                        logger.info("Remote DatabaseHelper connected");
                     } catch (NotBoundException | RemoteException e) {
                         logger.debug("Connection with remote DatabaseHelper failed. " + e.getMessage(), e);
                         logger.warn("Connection with remote DatabaseHelper failed. " + e.getMessage());
@@ -104,10 +111,11 @@ public class Main {
 
                     if(client != null) {
                         client.setListener(frame);
-                    }
+                    }*/
 
                     frame.pack();
                     frame.setVisible(true);
+                    logger.info("MainFrame loaded");
                 } catch (Exception e) {
                     logger.fatal(e.getMessage(), e);
                     e.printStackTrace();
