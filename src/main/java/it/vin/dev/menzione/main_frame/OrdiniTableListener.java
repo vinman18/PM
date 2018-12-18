@@ -19,7 +19,7 @@ public class OrdiniTableListener implements TableModelListener {
     private DatabaseService dbs;
     private UpdateWorkerListener<Ordine> listener;
 	
-	public OrdiniTableListener(DatabaseService dbs) throws SQLException {
+	public OrdiniTableListener(DatabaseService dbs) {
 		//dbu = DatabaseService.create();
         this.dbs = dbs;
 	}

@@ -21,5 +21,27 @@ public class Msg {
         return JOptionPane.showConfirmDialog(parent, message, "Scegli un'opzione", JOptionPane.YES_NO_OPTION);
     }
 
+    public static int options(Component parent, String message, Object[] options) {
+        return JOptionPane.showOptionDialog(parent,
+                message,
+                "Scegli un'opzione",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                options,
+                options[0]
+        );
+    }
 
+    public static int options(Component parent, String message, String title, int messageType, Object[] options) {
+        return JOptionPane.showOptionDialog(parent,
+                message,
+                title,
+                JOptionPane.YES_NO_OPTION,
+                messageType,
+                null,
+                options,
+                options[0]
+        );
+    }
 }

@@ -312,8 +312,8 @@ public class DatabaseService {
 		conn.setAutoCommit(true);
 	}
 
-	public Vector<Camion> getCamion() throws SQLException{
-		String query = "SELECT * FROM Camion";
+	public Vector<Camion> getCamion() throws SQLException {
+		String query = "SELECT * FROM Camion c ORDER BY c.Targa";
 		Statement st = conn.createStatement();
 		Vector<Camion> camion = new Vector<>();
 

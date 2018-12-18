@@ -14,9 +14,6 @@ import javax.swing.table.TableModel;
 
 
 public class OrdiniTable extends JTable {
-
-	private static final long serialVersionUID = 139390780226189146L;
-
 	public OrdiniTable() {
 	}
 

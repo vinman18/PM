@@ -3,23 +3,22 @@ package it.vin.dev.menzione.frame;
 import java.awt.Color;
 import java.awt.Component;
 import java.util.List;
-import java.util.Vector;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-import javax.swing.table.TableColumnModel;
-import javax.swing.table.TableModel;
 
+import com.google.common.eventbus.Subscribe;
 import it.vin.dev.menzione.Consts;
+import it.vin.dev.menzione.events.CamionCacheUpdated;
+import it.vin.dev.menzione.events.ViaggiEventBus;
 import it.vin.dev.menzione.logica.Camion;
+import it.vin.dev.menzione.logica.CamionListCache;
 
 import static it.vin.dev.menzione.Consts.*;
 
 public class ViaggiJTable extends JTable {
-
-    private static final long serialVersionUID = 3993661459218810323L;
     private int type;
 
     public int getType() {
@@ -35,7 +34,7 @@ public class ViaggiJTable extends JTable {
         setCellSelectionEnabled(true);
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        //viaggiNordTable.setBounds(469, 103, 400, 280);
+        ViaggiEventBus.getInstance().register(this);
     }
 
     public ViaggiJTable(int type) {
@@ -55,11 +54,12 @@ public class ViaggiJTable extends JTable {
             editCellAt(row, 2);
             requestFocus();
         }
+
         if(type == VIAGGI_TM_TYPE_NORD){
             if(col == 4){
                 changeSelection(row, 0, false, false);
             }
-        }else if(type == VIAGGI_TYPE_SUD){
+        }else if(type == VIAGGI_TM_TYPE_SUD){
             changeSelection(row, 0, false, false);
         }
     }
@@ -70,7 +70,7 @@ public class ViaggiJTable extends JTable {
         int selCol = 0;
         if(type == VIAGGI_TM_TYPE_NORD){
             selCol = 4;
-        }else if(type == VIAGGI_TYPE_SUD){
+        }else if(type == VIAGGI_TM_TYPE_SUD){
             selCol = 5;
         }
 
@@ -104,21 +104,27 @@ public class ViaggiJTable extends JTable {
         }
     }*/
 
-    public void doTableLayout() {
+    private void populateCamionDrop() {
         JComboBox<String> camionCombo = new JComboBox<>();
-        List<Camion> camions = ((ViaggiTableModel) getModel()).getCamions();
-        for(Camion c : camions){
-            camionCombo.addItem(c.getTarga());
+        List<String> camions = CamionListCache.getInstance().getKeyList();
+        for(String c : camions){
+            camionCombo.addItem(c);
         }
 
         TableColumn col;
         col = getColumnModel().getColumn(0); //Targa column
         col.setCellEditor(new DefaultCellEditor(camionCombo));
         col.setPreferredWidth(75);
+    }
+
+    public void doTableLayout() {
+        populateCamionDrop();
+
+        TableColumn col;
         col = getColumnModel().getColumn(1); //Caratt column
-        col.setPreferredWidth(100);
+        col.setPreferredWidth(150);
         col = getColumnModel().getColumn(3); //Note column
-        col.setPreferredWidth(200);
+        col.setPreferredWidth(300);
         if(type == Consts.VIAGGI_TM_TYPE_NORD) {
             col = getColumnModel().getColumn(4); //Nord Select column
         } else {
@@ -126,5 +132,10 @@ public class ViaggiJTable extends JTable {
             col = getColumnModel().getColumn(5); //Sud select column
         }
         col.setPreferredWidth(16);
+    }
+
+    @Subscribe
+    private void camionCacheUpdated(CamionCacheUpdated event) {
+        populateCamionDrop();
     }
 }

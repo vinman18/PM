@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.Vector;
 
 /**
@@ -38,7 +39,8 @@ public class ConfigFrame extends JFrame{
 
         setContentPane(rootPanel);
 
-        setTitle(Consts.PROG_TITLE);
+        ResourceBundle strings = ResourceBundle.getBundle("Localization/Strings");
+        setTitle(strings.getString("app.title") + " - " + strings.getString("app.version"));
         setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
 
         c = Configuration.getInstance();

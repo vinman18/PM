@@ -6,6 +6,7 @@ import java.util.Vector;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.Camion;
+import it.vin.dev.menzione.logica.CamionListCache;
 import it.vin.dev.menzione.logica.Viaggio;
 
 public class ViaggiNuoviTableModel extends ViaggiTableModel {
@@ -14,8 +15,8 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 
 	private String[] colonne;
 
-	public ViaggiNuoviTableModel(int type, List<Camion> camions) {
-		super(type, camions);
+	public ViaggiNuoviTableModel(int type) {
+		super(type);
 		if(type == Consts.VIAGGI_TM_TYPE_NORD){
 			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note"};
 		}else{
@@ -23,8 +24,8 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 		}
 	}
 
-	public ViaggiNuoviTableModel(Vector<Viaggio> viaggi, int type, List<Camion> camions) {
-		super(viaggi, type, camions);
+	public ViaggiNuoviTableModel(Vector<Viaggio> viaggi, int type) {
+		super(viaggi, type);
 
 		if(type == Consts.VIAGGI_TM_TYPE_NORD){
 			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note"};
@@ -78,7 +79,7 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 	public void setValueAt(Object value, int row, int col){
 		if(getType() == Consts.VIAGGI_TM_TYPE_NORD){
 			if(col == 0){
-				Camion c = ViaggiUtils.findCamionByTarga(getCamions(), value.toString());
+				Camion c = CamionListCache.getInstance().getElementByTarga(value.toString());
 				viaggi.elementAt(row).setCamion(c);
 			} else if(col == 2){
 				viaggi.elementAt(row).setAutista(value.toString());
@@ -88,9 +89,9 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 			} else if(col == 1){
 				viaggi.elementAt(row).getCamion().setCaratteristiche(value.toString());
 			}
-		}else if(getType() == Consts.VIAGGI_TYPE_SUD){
+		}else if(getType() == Consts.VIAGGI_TM_TYPE_SUD){
 			if(col == 0){
-				Camion c = ViaggiUtils.findCamionByTarga(getCamions(), value.toString());
+				Camion c = CamionListCache.getInstance().getElementByTarga(value.toString());
 				viaggi.elementAt(row).setCamion(c);
 			} else if(col == 2){
 				viaggi.elementAt(row).setAutista(value.toString());

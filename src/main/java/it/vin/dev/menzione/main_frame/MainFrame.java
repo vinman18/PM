@@ -1,11 +1,10 @@
 package it.vin.dev.menzione.main_frame;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.*;
 import javax.swing.table.TableColumnModel;
-import javax.swing.text.MaskFormatter;
 
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.Msg;
@@ -28,26 +27,33 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 import java.sql.Date;
 import java.sql.SQLException;
-import java.util.Calendar;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Vector;
+import java.text.MessageFormat;
+import java.util.*;
 
 
 @SuppressWarnings("FieldCanBeLocal")
 public class MainFrame extends JFrame implements TableModelListener, ReloadCallback, DatabaseHelperListener{
+    private final boolean DEBUG_FRAME = false;
 
-    private static final long serialVersionUID = 6785301407122344285L;
-    public static final int RELOAD_STANDARD = 0;
+    private static final int RELOAD_STANDARD = 0;
     public static final int RELOAD_RESETCONNECTION = 1;
 
-    public static final String SUD_PIN_COMMAND = "sud_pin";
-    public static final String NORD_PIN_COMMAND = "nord_pin";
-    public static final String SUD_UNPIN_COMMAND = "sud_unpin";
-    public static final String NORD_UNPIN_COMMAND = "nord_unpin";
+    public static final Font TAHOMA_DEFAULT_FONT = new Font("Tahoma", Font.PLAIN, 15);
 
-    public static final String ORDINI_DISCESA_COMMAND = "ordine_discesa";
-    public static final String ORDINI_SALITA_COMMAND = "ordine_salita";
+    private static final String SUD_PIN_COMMAND = "sud_pin";
+    private static final String NORD_PIN_COMMAND = "nord_pin";
+    private static final String SUD_UNPIN_COMMAND = "sud_unpin";
+    private static final String NORD_UNPIN_COMMAND = "nord_unpin";
+
+    private static final String ORDINI_DISCESA_COMMAND = "ordine_discesa";
+    private static final String ORDINI_SALITA_COMMAND = "ordine_salita";
+
+    private static final String NORD_ADD_ROW_COMMAND = "nord_add_row";
+    private static final String SUD_ADD_ROW_COMMAND = "sud_add_row";
+    private static final String NORD_REMOVE_ROW_COMMAND = "nord_remove_row";
+    private static final String SUD_REMOVE_ROW_COMMAND = "sud_remove_row";
+
+    private ResourceBundle strings = ResourceBundle.getBundle("Localization/Strings");
 
     private Date lastDateFromDb;
     private DatabaseService dbs;
@@ -72,22 +78,19 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private JScrollPane sudPinScrollPane;
     private ViaggiJTable viaggiSudPinTable;
     private JSplitPane viaggiSudSplitPane;
-//    private ViaggiTableModel nordTableModel;
-    private ViaggiTableModel viaggiNordPinTableModel;
-    private ViaggiTableModel viaggiSudPinTableModel;
-    private ViaggiTableModel sudTableModel;
-    private OrdiniTableModel ordiniSalitaTableModel;
-    private OrdiniTableModel ordiniDiscesaTableModel;
+    //    private ViaggiTableModel nordTableModel;
+//    private ViaggiTableModel viaggiSudPinTableModel;
+    //    private ViaggiTableModel sudTableModel;
+//    private OrdiniTableModel ordiniSalitaTableModel;
+//    private OrdiniTableModel ordiniDiscesaTableModel;
     private OrdiniTable ordiniSalitaTable;
     private ViaggiJTable viaggiNordTable;
     private ViaggiJTable viaggiNordPinTable;
     private JSplitPane viaggiNordSplitPane;
-    private JFormattedTextField formattedTextField;
-    private JComboBox<String> camionCombo;
-    private JPanel NorthPanel;
+    private JFormattedTextField formattedTextField = new CustomDateTextField();
+    private JPanel northPanel = new JPanel();
     private JLabel lblDateSelection;
-    private MaskFormatter dateMask;
-    private JPanel TablePanel;
+    private JPanel tablePanel;
     private JPanel titlePanel;
     private JLabel lblDataSelezionata;
     private JLabel selectedDateLbl;
@@ -134,10 +137,10 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private JPanel assNonAssicuratiPanel;
     private JLabel lblFermi;
     private JLabel lblNonAssicurati;
-    private NoteTableModel noteModel;
+    //    private NoteTableModel noteModel;
     private JPanel noteButtonPanel;
     private JLabel lblNote;
-    private JButton NoteRemoveButton;
+    private JButton noteRemoveButton;
     private JButton noteAddButton;
     private JPanel panel_8;
     private NoteTableListener noteListener;
@@ -165,7 +168,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             }
 
             logger.debug("viaggiPinTableListener: type=" + type + " row="+ row + " col="+ col);
-            if(type == TableModelEvent.UPDATE && col < 0) {
+            if(type == TableModelEvent.UPDATE && col == TableModelEvent.ALL_COLUMNS) {
                 return;
             }
 
@@ -188,7 +191,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                         @Override
                         public void onUpdate(Viaggio updated, int col) {
                             if(col == Viaggio.COL_PINNED) {
-                                infoTextField.setInfoMessage("Viaggio spostato con successo");
+                                infoTextField.setInfoMessage(strings.getString("mainframe.msg.move.viaggio.ok"));
                             } else {
                                 String value = ViaggiUtils.getViaggioValueByColumnIndex(updated, col);
                                 String columnName = Viaggio.NORD.equals(updated.getPosizione())
@@ -213,7 +216,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         public void onUpdate(Ordine updated, int col) {
             String columnName = ordiniDiscesaTable.getColumnName(col);
             String value = ViaggiUtils.getOrdineValueFromColumnIndex(updated, col);
-            //infoTextField.setInfoMessage("Ordini: valore " + value  + " per la colonna " + columnName + " salvato con successo");
             notifyRowUpdated("Ordini", columnName, value, updated.getDate().toString());
         }
 
@@ -231,7 +233,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final UpdateWorkerListener<Nota> noteUpdateResultListener = new UpdateWorkerListener<Nota>() {
         @Override
         public void onUpdate(Nota updated, int col) {
-            //infoTextField.setInfoMessage("Note: valore " + updated.getTesto() + " salvato con successo");
             notifyRowUpdated("Note", updated.getTipo(), updated.getTesto(), updated.getData().toString());
         }
 
@@ -297,7 +298,8 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
             try {
                 new PdfReportBuilder(viaggiNordTable, viaggiSudTable, viaggiNordPinTable, viaggiSudPinTable, ordiniSalitaTable, ordiniDiscesaTable, noteTable, fermiTxt.getText(), nonAssicuratiTxt.getText(), selectedDateLbl.getText());
-                JOptionPane.showMessageDialog(root, "Esportazione completata", "", JOptionPane.INFORMATION_MESSAGE);
+//                JOptionPane.showMessageDialog(root, "Esportazione completata", "", JOptionPane.INFORMATION_MESSAGE);
+                Msg.info(root, strings.getString("mainframe.msg.export.ok"));
                 if (Desktop.isDesktopSupported()) {
                     try {
                         File myFile = new File("Exports\\" +selectedDateLbl.getText()+".pdf");
@@ -333,8 +335,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                     logDatabaseError(e);
                 }
             }else{
-                Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire\n"
-                        + "un ordine.\nControllare la data inserita.");
+                Msg.error(root, strings.getString("mainframe.msg.select.date"));
             }
         }
     };
@@ -346,15 +347,19 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                     ? ordiniDiscesaTable
                     : ordiniSalitaTable;
 
-            int sel = table.getSelectedRow();
+            int rowSel = table.getSelectedRow();
+            int colSel = table.getSelectedColumn();
+
             OrdiniTableModel tm = (OrdiniTableModel) table.getModel();
-            Ordine o = tm.removeRow(sel);
+            Ordine o = tm.removeRow(rowSel);
             try {
                 dbs.rimuoviOrdine(o);
             } catch (SQLException e) {
                 tm.addRow(o);
                 logDatabaseError(e);
             }
+
+            selectTableCell(table, rowSel, colSel);
         }
     };
 
@@ -366,7 +371,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             if (currentDate != null) {
 
                 Nota nuovo = new Nota(currentDate, "", Nota.NOTA);
-                //long newId = dbs.aggiungiNota(nuovo);
 
                 NoteUpdateWorker.connect(dbs)
                         .insert(nuovo)
@@ -382,13 +386,16 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                                 nuovo.setId(newId);
                                 NoteTableModel tm = (NoteTableModel) noteTable.getModel();
                                 tm.addRow(nuovo);
+
+                                int rows = noteTable.getRowCount();
+
+                                selectTableCell(noteTable, rows-1, 0);
                                 notifyRowInserted("Note", ""+newId, inserted.getData().toString());
                             }
                         })
                         .execute();
             } else {
-                Msg.error(root, "Deve essere selezionata una \ndata corretta per poter inserire "
-                        + "una nota.\nControllare la data inserita.");
+                Msg.error(root, strings.getString("mainframe.msg.select.date"));
             }
 
         }
@@ -397,35 +404,35 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener deleteNoteAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            int sel = noteTable.getSelectedRow();
+            int selRow = noteTable.getSelectedRow();
+            int selCol = noteTable.getSelectedColumn();
+
             NoteTableModel tm = (NoteTableModel) noteTable.getModel();
-            Nota n = tm.removeRow(sel);
+            Nota n = tm.removeRow(selRow);
             try {
                 dbs.rimuoviNota(n);
             } catch (SQLException e1) {
                 tm.addRow(n);
                 logDatabaseError(e1);
             }
+
+            selectTableCell(noteTable, selRow, selCol);
         }
     };
 
     private final ActionListener salvaFermiENonAssAction = new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-                    /*String s = selectedDateLbl.getText();
-                    s = s.replace('-', '/');
-                    Date d = ViaggiUtils.checkAndCreateDate(s);*/
-
             UpdateWorkerListener<Nota> resultListener = new UpdateWorkerListener<Nota>() {
                 @SuppressWarnings("Duplicates")
                 @Override
                 public void onInsert(Nota inserted, long newId) {
                     String message = null;
                     if(Nota.FERMI.equals(inserted.getTipo())) {
-                        message = "Fermi (e Non Ass) salvati con successo";
+                        message = strings.getString("mainframe.msg.fermi.nonass.save.ok");
                         fermiNota = inserted;
                         fermiTxt.setText(fermiNota.getTesto());
                     } else if(Nota.NONASS.equals(inserted.getTipo())) {
-                        message = "Non Ass (e Fermi) salvati con successo";
+                        message = strings.getString("mainframe.msg.nonass.fermi.save.ok");
                         nonAssNota = inserted;
                         nonAssicuratiTxt.setText(nonAssNota.getTesto());
                     }
@@ -437,16 +444,15 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 public void onUpdate(Nota updated, int col) {
                     String message = null;
                     if(Nota.FERMI.equals(updated.getTipo())) {
-                        message = "Fermi (e Non Ass) salvati con successo";
+                        message = strings.getString("mainframe.msg.fermi.nonass.save.ok");
                         fermiNota = updated;
                         fermiTxt.setText(fermiNota.getTesto());
                     } else if(Nota.NONASS.equals(updated.getTipo())) {
-                        message = "Non Ass (e Fermi) salvati con successo";
+                        message = strings.getString("mainframe.msg.nonass.fermi.save.ok");
                         nonAssNota = updated;
                         nonAssicuratiTxt.setText(nonAssNota.getTesto());
                     }
 
-                    //infoTextField.setInfoMessage(message);
                     notifyRowUpdated("Fermi e Non Ass", updated.getData().toString(), message);
                 }
 
@@ -456,23 +462,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 }
             };
 
-            /*if(fermiNota == null){
-                fermiNota = new Nota(currentDate, fermiTxt.getText(), Nota.FERMI);
-                dbs.aggiungiNota(fermiNota);
-                fermiNota = dbs.getFermiByDate(currentDate);
-            }else{
-                fermiNota.setTesto(fermiTxt.getText());
-                dbs.modificaNota(fermiNota);
-            }
-
-            if(nonAssNota == null){
-                nonAssNota = new Nota(currentDate, fermiTxt.getText(), Nota.NONASS);
-                dbs.aggiungiNota(nonAssNota);
-                nonAssNota = dbs.getNonAssByDate(currentDate);
-            }else{
-                nonAssNota.setTesto(nonAssicuratiTxt.getText());
-                dbs.modificaNota(nonAssNota);
-            }*/
             if(fermiNota == null) {
                 fermiNota = new Nota(currentDate, fermiTxt.getText(), Nota.FERMI);
                 NoteUpdateWorker.connect(dbs)
@@ -501,7 +490,6 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                         .execute();
             }
 
-            //reloadNote(currentDate);
         }
     };
 
@@ -518,12 +506,10 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             Component source = (Component) e.getSource();
             Component root = SwingUtilities.getRoot(source);
 
-            int resp1 = Msg.yesno(root, "Stai per cancellare la data " + currentDate.toString() + "." +
-                    " Sei sicuro? \n\nATTENZIONE: QUESTA OPERAZIONE NON PUO' ESSERE ANNULLATA.");
+            int resp1 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.1"), currentDate.toString()));
 
             if(resp1 == JOptionPane.YES_OPTION) {
-                int resp2 = Msg.yesno(root, "Confermi di eliminare la data " + currentDate.toString() + "?" +
-                        "\n\n Questa operazione NON può essere annullata.");
+                int resp2 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.2"), currentDate.toString()));
 
                 if(resp2 == JOptionPane.YES_OPTION) {
                     try {
@@ -533,7 +519,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                     } catch (SQLException e1) {
                         logDatabaseError(e1);
                     } catch (RemoteException e1) {
-                        infoTextField.setWarnMessage("Impossibile comunicare l'azione agli altri clients");
+                        infoTextField.setWarnMessage(strings.getString("database.helper.communication.fail"));
                     }
                 }
             }
@@ -550,18 +536,20 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 case NORD_PIN_COMMAND:
                     table = viaggiNordTable;
                     tableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
-                    pinTableModel = viaggiNordPinTableModel;
+                    pinTableModel = (ViaggiTableModel) viaggiNordPinTable.getModel();
                     break;
                 case SUD_PIN_COMMAND:
                     table = viaggiSudTable;
-                    tableModel = sudTableModel;
-                    pinTableModel = viaggiSudPinTableModel;
+                    tableModel = (ViaggiTableModel) viaggiSudTable.getModel();
+                    pinTableModel = (ViaggiTableModel) viaggiSudPinTable.getModel();
                     break;
                 default:
                     return;
             }
 
             int selectedRow = table.getSelectedRow();
+            int selectedColumn = table.getSelectedColumn();
+
             if(selectedRow < 0) {
                 return;
             }
@@ -571,86 +559,131 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
             Viaggio v = tableModel.removeRow(selectedRow);
             pinTableModel.addRow(v);
+
+            selectTableCell(table, selectedRow, selectedColumn);
         }
     };
 
     private ActionListener viaggiUnPinAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            JTable table;
+            JTable pinTable;
             ViaggiTableModel tableModel, pinTableModel;
 
             switch (e.getActionCommand()) {
                 case NORD_UNPIN_COMMAND:
-                    table = viaggiNordPinTable;
+                    pinTable = viaggiNordPinTable;
                     tableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
-                    pinTableModel = viaggiNordPinTableModel;
+                    pinTableModel = (ViaggiTableModel) viaggiNordPinTable.getModel();
                     break;
                 case SUD_UNPIN_COMMAND:
-                    table = viaggiSudPinTable;
-                    tableModel = sudTableModel;
-                    pinTableModel = viaggiSudPinTableModel;
+                    pinTable = viaggiSudPinTable;
+                    tableModel = (ViaggiTableModel) viaggiSudTable.getModel();
+                    pinTableModel = (ViaggiTableModel) viaggiSudPinTable.getModel();
                     break;
                 default:
                     return;
             }
 
-            int selectedRow = table.getSelectedRow();
+            int selectedRow = pinTable.getSelectedRow();
+            int selectedColumn = pinTable.getSelectedColumn();
 
             if(selectedRow < 0) {
                 return;
             }
 
-            if(table.isEditing()) {
-                table.getCellEditor().cancelCellEditing();
+            if(pinTable.isEditing()) {
+                pinTable.getCellEditor().cancelCellEditing();
             }
 
             Viaggio v = pinTableModel.removeRow(selectedRow);
             tableModel.addRow(v);
+
+            selectTableCell(pinTable, selectedRow, selectedColumn);
         }
     };
 
-    private final ActionListener sudAddAction = new ActionListener() {
+/*    private final ActionListener sudAddAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
             sudTableModel.addRow(null);
         }
-    };
+    };*/
 
-    private final ActionListener sudRemoveAction = new ActionListener() {
-        @SuppressWarnings("Duplicates")
+    private final ActionListener viaggiRowsAction = new ActionListener() {
+
         @Override
         public void actionPerformed(ActionEvent arg0) {
-            int selected = viaggiSudTable.getSelectedRow();
-            if(selected < 0) {
-                return;
+            String actionCommand = arg0.getActionCommand();
+            ViaggiJTable table;
+
+            switch (actionCommand) {
+                case NORD_REMOVE_ROW_COMMAND:
+                case NORD_ADD_ROW_COMMAND:
+                    table = viaggiNordTable; break;
+                case SUD_REMOVE_ROW_COMMAND:
+                case SUD_ADD_ROW_COMMAND:
+                    table = viaggiSudTable; break;
+                default:
+                    return;
             }
 
-            if(viaggiSudTable.isEditing()){
-                viaggiSudTable.getCellEditor().cancelCellEditing();
+            switch (actionCommand) {
+                case NORD_ADD_ROW_COMMAND:
+                case SUD_ADD_ROW_COMMAND:
+                    ((ViaggiTableModel) table.getModel()).addRow(null);
+                    break;
+                case NORD_REMOVE_ROW_COMMAND:
+                case SUD_REMOVE_ROW_COMMAND:
+                    int selectedRow = table.getSelectedRow();
+                    int selectedColumn = table.getSelectedColumn();
+
+                    if(selectedRow < 0) {
+                        return;
+                    }
+
+                    if(table.isEditing()){
+                        table.getCellEditor().cancelCellEditing();
+                    }
+
+                    Viaggio removed = ((ViaggiTableModel) table.getModel()).removeRow(selectedRow);
+                    try {
+                        dbs.rimuoviViaggio(removed);
+                    } catch (SQLException e) {
+                        ((ViaggiTableModel) table.getModel()).addRow(removed);
+                        logDatabaseError(e);
+                    }
+
+                    selectTableCell(table, selectedRow, selectedColumn);
+                    break;
             }
-            Viaggio rimosso = sudTableModel.removeRow(selected);
-            try {
-                dbs.rimuoviViaggio(rimosso);
-            } catch (SQLException e) {
-                logDatabaseError(e);
-            }
+
         }
     };
 
-    private final ActionListener nordAddAction = new ActionListener() {
+    /*private final ActionListener viaggiAddRowAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
-            ((ViaggiTableModel) viaggiNordTable.getModel()).addRow(null);
-        }
-    };
+            String actionCommand = arg0.getActionCommand();
+            ViaggiTableModel tm;
 
-    private final ActionListener nordRemoveAction = new ActionListener() {
+            switch (actionCommand) {
+                case NORD_ADD_ROW_COMMAND:
+                    tm = (ViaggiTableModel) viaggiNordTable.getModel(); break;
+                case SUD_ADD_ROW_COMMAND:
+                    tm = (ViaggiTableModel) viaggiSudTable.getModel(); break;
+                default:
+                    return;
+            }
+
+            tm.addRow(null);
+        }
+    };*/
+
+    /*private final ActionListener nordRemoveAction = new ActionListener() {
         @SuppressWarnings("Duplicates")
         @Override
         public void actionPerformed(ActionEvent arg0) {
-            ViaggiTableModel nordTableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
-
             int selected = viaggiNordTable.getSelectedRow();
             if(selected < 0) {
                 return;
@@ -659,14 +692,14 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             if(viaggiNordTable.isEditing()){
                 viaggiNordTable.getCellEditor().cancelCellEditing();
             }
-            Viaggio rimosso = nordTableModel.removeRow(selected);
+            Viaggio rimosso = ((ViaggiTableModel) viaggiNordTable.getModel()).removeRow(selected);
             try {
                 dbs.rimuoviViaggio(rimosso);
             } catch (SQLException e) {
                 logDatabaseError(e);
             }
         }
-    };
+    };*/
 
     private AbstractAction openConfigAction = new AbstractAction() {
         @Override
@@ -677,7 +710,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     };
 
-    private void init(){
+    private void init() throws SQLException {
         this.setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
         tableColumnModelListenerMap = new HashMap<>();
 
@@ -690,21 +723,21 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             camions = dbs.getCamion();
         }catch (SQLException e) {
             logger.fatal(e);
-            String[] options = new String[] {"OK", "Impostazioni"};
+            //String[] options = new String[] {"OK", "Impostazioni"};
 
-            int ans = JOptionPane.showOptionDialog(rootPane,
-                    "Connessione al server fallita",
-                    "Errore",
-                    JOptionPane.YES_NO_OPTION,
+            String[] options = strings.getString("mainframe.msg.options.ok.settings").split(",");
+
+            int ans = Msg.options(
+                    rootPane,
+                    strings.getString("generic.server.connection.fail"),
+                    strings.getString("generic.error"),
                     JOptionPane.ERROR_MESSAGE,
-                    null,
-                    options,
-                    options[0]
+                    options
             );
 
             if(ans == 1) {
                 ConfigFrame.open(WindowConstants.EXIT_ON_CLOSE);
-                return;
+                throw new SQLException(e);
             } else {
                 System.exit(1);
             }
@@ -713,32 +746,31 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("F12"), "openConfig");
         rootPane.getActionMap().put("openConfig", openConfigAction);
 
-
-        setTitle(Consts.PROG_TITLE);
+        setTitle(strings.getString("app.title") + " - " + strings.getString("app.version"));
         setBounds(100, 100, 450, 300);
         setExtendedState(Frame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 
     public MainFrame() {
-        init();
+        try {
+            init();
+        } catch (SQLException e) {
+            return;
+        }
 
-        contentPane = new JPanel();
+        contentPane = new JPanel(new BorderLayout(0, 0));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-        JScrollPane pp = new JScrollPane(contentPane);
+//        JScrollPane pp = new JScrollPane(contentPane);
         setContentPane(contentPane);
-        contentPane.setLayout(new BorderLayout(0, 0));
 
         //nordTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
-        sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TYPE_SUD, camions);
+//        sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD);
 
-        NorthPanel = new JPanel();
-        contentPane.add(NorthPanel, BorderLayout.NORTH);
+        contentPane.add(northPanel, BorderLayout.NORTH);
+        lblDateSelection = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.date.selection"));
+        northPanel.add(lblDateSelection);
 
-        lblDateSelection = new JLabel("Seleziona una data:");
-        NorthPanel.add(lblDateSelection);
-
-        formattedTextField = new CustomDateTextField();
         formattedTextField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -752,188 +784,153 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 }
             }
         });
-        NorthPanel.add(formattedTextField);
+        northPanel.add(formattedTextField);
 
-        JButton btnFind = new JButton();
-        try {
-            Image searchIcon = ImageIO.read(getClass().getResource("/Icons/search16.png"));
-            btnFind.setIcon(new ImageIcon(searchIcon));
-        } catch (IOException e) {
-            logger.warn("Failed to load button icon", e);
-        }
-        btnFind.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                loadDateFromInsertedFormattedTextField();
-            }
-        });
-        NorthPanel.add(btnFind);
+        JButton btnFind = ViaggiFrameUtils.newIconButton(
+                "/Icons/search16.png",
+                strings.getString("mainframe.button.find"),
+                e -> loadDateFromInsertedFormattedTextField(),
+                null
+        );
+        northPanel.add(btnFind);
 
-        JButton reloadButton = new JButton();
-        try {
-            Image reloadIcon = ImageIO.read(getClass().getResource("/Icons/reload16.png"));
-            reloadButton.setIcon(new ImageIcon(reloadIcon));
-        } catch (IOException e) {
-            logger.warn("Failed to load button icon", e);
-        }
-        reloadButton.addActionListener(reloadAction);
-        NorthPanel.add(reloadButton);
+        JButton reloadButton = ViaggiFrameUtils.newIconButton(
+                "/Icons/reload16.png",
+                strings.getString("mainframe.button.reload"),
+                reloadAction,
+                null
+        );
 
-        JButton btnGoToLastDate = new JButton("Ultima data");
-        btnGoToLastDate.addActionListener(goToLastDateAction);
-        NorthPanel.add(btnGoToLastDate);
+        northPanel.add(reloadButton);
+
+        JButton btnGoToLastDate = ViaggiFrameUtils.newButton(
+                strings.getString("mainframe.button.last.date"),
+                goToLastDateAction,
+                null
+        );
+        northPanel.add(btnGoToLastDate);
 
         titlePanel = new JPanel();
-        NorthPanel.add(titlePanel);
+        northPanel.add(titlePanel);
 
-        lblDataSelezionata = new JLabel("Data selezionata:");
-        lblDataSelezionata.setFont(new Font("Tahoma", Font.PLAIN, 15));
+        lblDataSelezionata = ViaggiFrameUtils.newJLabel(
+                strings.getString("mainframe.label.date.selected"),
+                TAHOMA_DEFAULT_FONT
+        );
         titlePanel.add(lblDataSelezionata);
 
-        selectedDateLbl = new JLabel("");
-        selectedDateLbl.setFont(new Font("Tahoma", Font.PLAIN, 15));
+        selectedDateLbl = ViaggiFrameUtils.newJLabel(
+                "",
+                TAHOMA_DEFAULT_FONT
+        );
         titlePanel.add(selectedDateLbl);
 
-        giornoSettLabel = new JLabel("");
-        giornoSettLabel.setFont(new Font("Tahoma", Font.PLAIN, 15));
+        giornoSettLabel = ViaggiFrameUtils.newJLabel(
+                "",
+                TAHOMA_DEFAULT_FONT
+        );
         titlePanel.add(giornoSettLabel);
 
-        JButton btnDelete = new JButton();
-        try {
-            Image deleteIcon = ImageIO.read(getClass().getResource("/Icons/delete16.png"));
-            btnDelete.setIcon(new ImageIcon(deleteIcon));
-        } catch (IOException e) {
-            logger.warn("Failed to load button icon", e);
+        JButton btnDelete = ViaggiFrameUtils.newIconButton(
+                "/Icons/delete16.png",
+                strings.getString("mainframe.button.date.delete"),
+                deleteThisDayAction,
+                null
+        );
+        northPanel.add(btnDelete);
+
+        JButton btnGestisciCamion = ViaggiFrameUtils.newButton(
+                strings.getString("mainframe.button.camion.managment"),
+                openCamionFrameAction,
+                null
+        );
+        northPanel.add(btnGestisciCamion);
+
+        JButton btnAggiungiGiornata = ViaggiFrameUtils.newButton(
+                strings.getString("mainframe.button.date.add"),
+                openNewDateFrameAction,
+                null
+        );
+        northPanel.add(btnAggiungiGiornata);
+
+        btnEsportaQuestaData = ViaggiFrameUtils.newButton(
+                strings.getString("mainframe.button.date.export"),
+                dateExportAction,
+                null
+        );
+        northPanel.add(btnEsportaQuestaData);
+
+
+        tablePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+        tablePanel.setAlignmentY(Component.TOP_ALIGNMENT);
+        tablePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        if(DEBUG_FRAME) {
+            contentPane.add(new JScrollPane(tablePanel), BorderLayout.CENTER);
+        } else {
+            contentPane.add(tablePanel, BorderLayout.CENTER);
         }
 
-        btnDelete.addActionListener(deleteThisDayAction);
-        NorthPanel.add(btnDelete);
-
-        JButton btnGestisciCamion = new JButton("Gestisci Camion");
-        btnGestisciCamion.addActionListener(openCamionFrameAction);
-        NorthPanel.add(btnGestisciCamion);
-
-        JButton btnAggiungiGiornata = new JButton("Aggiungi Giornata");
-        btnAggiungiGiornata.addActionListener(openNewDateFrameAction);
-        NorthPanel.add(btnAggiungiGiornata);
-
-        btnEsportaQuestaData = new JButton("Esporta questa data");
-        btnEsportaQuestaData.addActionListener(dateExportAction);
-        NorthPanel.add(btnEsportaQuestaData);
-
-
-        TablePanel = new JPanel();
-        TablePanel.setAlignmentY(Component.TOP_ALIGNMENT);
-        TablePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        TablePanel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
-        contentPane.add(TablePanel, BorderLayout.CENTER);
-
-        ordiniSalitaTableModel = new OrdiniTableModel();
-        panel_5 = new JPanel();
-        TablePanel.add(panel_5);
-
-        salitaPanel = new JPanel();
-        salitaPanel.setLayout(new BorderLayout(0, 0));
-        ordiniSalitaTableButtonPanel = new JPanel();
+        salitaPanel = new JPanel(new BorderLayout(0, 0));
+        ordiniSalitaTableButtonPanel = new JPanel(new BorderLayout(0, 0));
         salitaPanel.add(ordiniSalitaTableButtonPanel, BorderLayout.NORTH);
-        ordiniSalitaTableButtonPanel.setLayout(new BorderLayout(0, 0));
 
-        lblOrdini = new JLabel("ORDINI SALITA");
-        lblOrdini.setFont(new Font("Tahoma", Font.PLAIN, 15));
+        lblOrdini = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.order.up"), TAHOMA_DEFAULT_FONT);
         lblOrdini.setHorizontalAlignment(SwingConstants.CENTER);
         ordiniSalitaTableButtonPanel.add(lblOrdini, BorderLayout.CENTER);
 
-        panel = new JPanel();
-        FlowLayout flowLayout_2 = (FlowLayout) panel.getLayout();
-        flowLayout_2.setAlignment(FlowLayout.TRAILING);
+        panel = new JPanel(new FlowLayout(FlowLayout.TRAILING));
         ordiniSalitaTableButtonPanel.add(panel, BorderLayout.EAST);
 
-        ordiniSalitaRimuoviButton = new JButton("-");
+        ordiniSalitaRimuoviButton = ViaggiFrameUtils.newButton(
+                "-",
+                removeOrderAction,
+                ORDINI_SALITA_COMMAND
+        );
         panel.add(ordiniSalitaRimuoviButton);
 
-        ordiniSalitaAggiungiButton = new JButton("+");
+        ordiniSalitaAggiungiButton = ViaggiFrameUtils.newButton(
+                "+",
+                addOrderAction,
+                ORDINI_SALITA_COMMAND
+        );
         panel.add(ordiniSalitaAggiungiButton);
 
         ordiniSalitaTable = new OrdiniTable();
         ordiniSalitaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-
         ordiniSalitaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ordiniSalitaTable.setCellSelectionEnabled(true);
-        ordiniSalitaTable.setModel(ordiniSalitaTableModel);
-        TablePanel.add(ordiniSalitaTable);
+        ordiniSalitaTable.setModel(new OrdiniTableModel());
+//        tablePanel.add(ordiniSalitaTable);
 
         clientiTableScrollPane = new JScrollPane(ordiniSalitaTable);
-        clientiTableScrollPane.setPreferredSize(new Dimension(452, 200));
+//        clientiTableScrollPane.setPreferredSize(new Dimension(452, 200));
         salitaPanel.add(clientiTableScrollPane);
 
-        discesaPanel = new JPanel();
-        discesaPanel.setPreferredSize(new Dimension(452, 200));
-        discesaPanel.setLayout(new BorderLayout(0, 0));
-        panel_5.setLayout(new BorderLayout(0, 0));
+        discesaPanel = new JPanel(new BorderLayout(0, 0));
+//        discesaPanel.setPreferredSize(new Dimension(452, 200));
 
-
-        clientiTableSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, salitaPanel, discesaPanel);
-        clientiTableSplitPane.setVerifyInputWhenFocusTarget(false);
-        clientiTableSplitPane.setDividerSize(1);
-        panel_5.add(clientiTableSplitPane);
-        clientiTableSplitPane.setBorder(null);
-        clientiTableSplitPane.setLayout(new BoxLayout(clientiTableSplitPane, BoxLayout.Y_AXIS));
-
-        notePanel = new JPanel();
-        panel_5.add(notePanel, BorderLayout.SOUTH);
-        notePanel.setLayout(new BorderLayout(0, 0));
-
-        noteScrollPane = new JScrollPane();
-        notePanel.add(noteScrollPane);
-
-        noteTable = new JTable();
-        noteScrollPane.setViewportView(noteTable);
-
-        noteModel = new NoteTableModel();
-
-        noteTable.setModel(noteModel);
-
-        noteButtonPanel = new JPanel();
-        notePanel.add(noteButtonPanel, BorderLayout.NORTH);
-        noteButtonPanel.setLayout(new BorderLayout(0, 0));
-
-        lblNote = new JLabel("Note");
-        lblNote.setHorizontalAlignment(SwingConstants.CENTER);
-        noteButtonPanel.add(lblNote, BorderLayout.CENTER);
-
-        panel_8 = new JPanel();
-        noteButtonPanel.add(panel_8, BorderLayout.EAST);
-
-        NoteRemoveButton = new JButton("-");
-        NoteRemoveButton.addActionListener(deleteNoteAction);
-        panel_8.add(NoteRemoveButton);
-
-        noteAddButton = new JButton("+");
-        noteAddButton.addActionListener(aggiungiNotaAction);
-        panel_8.add(noteAddButton);
-
-        ordiniDiscesaButtonPanel = new JPanel();
+        ordiniDiscesaButtonPanel = new JPanel(new BorderLayout(0, 0));
         discesaPanel.add(ordiniDiscesaButtonPanel, BorderLayout.NORTH);
-        ordiniDiscesaButtonPanel.setLayout(new BorderLayout(0, 0));
 
-        lblNewLabel = new JLabel("DISCESA");
-        lblNewLabel.setFont(new Font("Tahoma", Font.PLAIN, 15));
+        lblNewLabel = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.order.down"), TAHOMA_DEFAULT_FONT);
         lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
         ordiniDiscesaButtonPanel.add(lblNewLabel);
 
-        panel_4 = new JPanel();
+        panel_4 = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
         ordiniDiscesaButtonPanel.add(panel_4, BorderLayout.EAST);
-        panel_4.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 5));
 
-        ordiniDiscesaRimuoviButton = new JButton("-");
-        ordiniDiscesaRimuoviButton.addActionListener(removeOrderAction);
-        ordiniDiscesaRimuoviButton.setActionCommand(ORDINI_DISCESA_COMMAND);
-
+        ordiniDiscesaRimuoviButton = ViaggiFrameUtils.newButton(
+                "-",
+                removeOrderAction,
+                ORDINI_DISCESA_COMMAND
+        );
         panel_4.add(ordiniDiscesaRimuoviButton);
 
-        ordiniDiscesaAggiungiButton = new JButton("+");
-        ordiniDiscesaAggiungiButton.addActionListener(addOrderAction);
-        ordiniDiscesaAggiungiButton.setActionCommand(ORDINI_DISCESA_COMMAND);
-
+        ordiniDiscesaAggiungiButton = ViaggiFrameUtils.newButton(
+                "+",
+                addOrderAction,
+                ORDINI_DISCESA_COMMAND
+        );
         panel_4.add(ordiniDiscesaAggiungiButton);
 
         scrollPane = new JScrollPane();
@@ -943,122 +940,149 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         ordiniDiscesaTable.setCellSelectionEnabled(true);
         ordiniDiscesaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ordiniDiscesaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        ordiniDiscesaTableModel = new OrdiniTableModel();
-        ordiniDiscesaTable.setModel(ordiniDiscesaTableModel);
+        ordiniDiscesaTable.setModel(new OrdiniTableModel());
+
+        lis = new OrdiniTableListener(dbs);
+        lis.setUpdateWorkerListener(ordiniUpdateResultListener);
+        ordiniSalitaTable.getModel().addTableModelListener(lis);
+        ordiniDiscesaTable.getModel().addTableModelListener(lis);
+
         scrollPane.setViewportView(ordiniDiscesaTable);
 
-        ordiniSalitaAggiungiButton.addActionListener(addOrderAction);
-        ordiniSalitaAggiungiButton.setActionCommand(ORDINI_SALITA_COMMAND);
+        clientiTableSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, salitaPanel, discesaPanel);
+        clientiTableSplitPane.setVerifyInputWhenFocusTarget(false);
+        clientiTableSplitPane.setDividerSize(1);
+        clientiTableSplitPane.setBorder(null);
+        clientiTableSplitPane.setLayout(new BoxLayout(clientiTableSplitPane, BoxLayout.Y_AXIS));
 
-        ordiniSalitaRimuoviButton.addActionListener(removeOrderAction);
-        ordiniSalitaRimuoviButton.setActionCommand(ORDINI_SALITA_COMMAND);
+        panel_5 = new JPanel(new BorderLayout(0, 0));
+        tablePanel.add(panel_5);
+        panel_5.add(clientiTableSplitPane);
 
-        try {
-            lis = new OrdiniTableListener(dbs);
-            lis.setUpdateWorkerListener(ordiniUpdateResultListener);
-            ordiniSalitaTableModel.addTableModelListener(lis);
-            ordiniDiscesaTableModel.addTableModelListener(lis);
-            noteListener = new NoteTableListener(dbs);
-            noteListener.setResultListener(noteUpdateResultListener);
-            noteModel.addTableModelListener(noteListener);
-        } catch (SQLException e1) {
-            logDatabaseError(e1);
-        }
+        notePanel = new JPanel(new BorderLayout(0, 0));
+        panel_5.add(notePanel, BorderLayout.SOUTH);
 
-        sudTablePanel = new JPanel();
-        TablePanel.add(sudTablePanel);
+        noteScrollPane = new JScrollPane();
+        notePanel.add(noteScrollPane);
 
-        viaggiSudTable = new ViaggiJTable(Consts.VIAGGI_TYPE_SUD);
-        TablePanel.add(viaggiSudTable);
-        viaggiSudTable.setModel(sudTableModel);
-        viaggiSudTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
-        viaggiSudTable.getModel().addTableModelListener(this);
-        sudTablePanel.setLayout(new BorderLayout(0, 0));
+        noteTable = new JTable();
+        noteTable.setModel(new NoteTableModel());
+        noteListener = new NoteTableListener(dbs);
+        noteListener.setResultListener(noteUpdateResultListener);
+        noteTable.getModel().addTableModelListener(noteListener);
 
-        sudTableButtonPanel = new JPanel();
+        noteScrollPane.setViewportView(noteTable);
+
+        noteButtonPanel = new JPanel(new BorderLayout(0, 0));
+        notePanel.add(noteButtonPanel, BorderLayout.NORTH);
+
+        lblNote = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.note"));
+        lblNote.setHorizontalAlignment(SwingConstants.CENTER);
+        noteButtonPanel.add(lblNote, BorderLayout.CENTER);
+
+        panel_8 = new JPanel();
+        noteButtonPanel.add(panel_8, BorderLayout.EAST);
+
+        noteRemoveButton = ViaggiFrameUtils.newButton(
+                "-",
+                deleteNoteAction,
+                null
+        );
+        panel_8.add(noteRemoveButton);
+
+        noteAddButton = ViaggiFrameUtils.newButton(
+                "+",
+                aggiungiNotaAction,
+                null
+        );
+        panel_8.add(noteAddButton);
+
+        sudTablePanel = new JPanel(new BorderLayout(0, 0));
+//        tablePanel.add(sudTablePanel);
+
+        viaggiSudTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_SUD);
+//        tablePanel.add(viaggiSudTable);
+        viaggiSudTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE); //TODO: add this to all tables in frame
+
+        //TODO: viaggi sud table model definition goes here
+        sudTableButtonPanel = new JPanel(new BorderLayout(0, 0));
         sudTablePanel.add(sudTableButtonPanel, BorderLayout.NORTH);
-        sudTableButtonPanel.setLayout(new BorderLayout(0, 0));
 
-        panel_3 = new JPanel();
-        TablePanel.add(panel_3);
+        panel_3 = new JPanel(new BorderLayout(0, 0));
+        tablePanel.add(panel_3);
 
-        lblSud = new JLabel("SUD");
+        lblSud = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.viaggi.sud"), TAHOMA_DEFAULT_FONT);
         lblSud.setHorizontalAlignment(SwingConstants.CENTER);
-        lblSud.setFont(new Font("Tahoma", Font.PLAIN, 15));
         sudTableButtonPanel.add(lblSud, BorderLayout.CENTER);
 
-        panel_2 = new JPanel();
-        FlowLayout flowLayout = (FlowLayout) panel_2.getLayout();
-        flowLayout.setAlignment(FlowLayout.RIGHT);
+        panel_2 = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         sudTableButtonPanel.add(panel_2, BorderLayout.EAST);
 
-        sudRemoveButton = new JButton("-");
-        panel_2.add(sudRemoveButton);
-        sudRemoveButton.addActionListener(sudRemoveAction);
+        sudRemoveButton = ViaggiFrameUtils.newButton(
+                "-",
+                viaggiRowsAction,
+                SUD_REMOVE_ROW_COMMAND
+        );
 
-        sudAddButton = new JButton("+");
-        panel_2.add(sudAddButton);
-        sudAddButton.addActionListener(sudAddAction);
 
-        sudPinButton = new JButton("\u2193");
-        sudPinButton.addActionListener(viaggiPinAction);
-        sudPinButton.setActionCommand(SUD_PIN_COMMAND);
+        sudAddButton = ViaggiFrameUtils.newButton(
+                "+",
+                viaggiRowsAction,
+                SUD_ADD_ROW_COMMAND
+        );
+
+        sudPinButton = ViaggiFrameUtils.newButton(
+                "\u2193",
+                viaggiPinAction,
+                SUD_PIN_COMMAND
+        );
+
+        sudUnpinButton = ViaggiFrameUtils.newButton(
+                "\u2191",
+                viaggiUnPinAction,
+                SUD_UNPIN_COMMAND
+        );
+
         panel_2.add(sudPinButton);
-
-        sudUnpinButton = new JButton("\u2191");
-        sudUnpinButton.addActionListener(viaggiUnPinAction);
-        sudUnpinButton.setActionCommand(SUD_UNPIN_COMMAND);
         panel_2.add(sudUnpinButton);
+        panel_2.add(sudRemoveButton);
+        panel_2.add(sudAddButton);
 
         sudTableScrollPane = new JScrollPane(viaggiSudTable);
         sudTableScrollPane.setBorder(null);
 
-        viaggiSudPinTable = new ViaggiJTable(Consts.VIAGGI_TYPE_SUD);
+        viaggiSudPinTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_SUD);
         viaggiSudPinTable.setTableHeader(null);
-        viaggiSudPinTableModel = new ViaggiTableModel(Consts.VIAGGI_TYPE_SUD, camions);
-        viaggiSudPinTableModel.addTableModelListener(viaggiPinnedTableListener);
-        viaggiSudPinTable.setModel(viaggiSudPinTableModel);
-        viaggiSudPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
+        //TODO: viaggi sud pin table model definition goes here
         sudPinScrollPane = new JScrollPane(viaggiSudPinTable);
 
         viaggiSudSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, sudTableScrollPane, sudPinScrollPane);
         viaggiSudSplitPane.setDividerSize(3);
         sudTablePanel.add(viaggiSudSplitPane, BorderLayout.CENTER);
 
-        nordTablePanel = new JPanel();
-        TablePanel.add(nordTablePanel);
+        nordTablePanel = new JPanel(new BorderLayout(0, 0));
+//        tablePanel.add(nordTablePanel);
 
         viaggiNordTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
-        TablePanel.add(viaggiNordTable);
+//        tablePanel.add(viaggiNordTable);
 
         //TODO: viaggi nord table model definition goes here
-        nordTablePanel.setLayout(new BorderLayout(0, 0));
 
-        nordTableButtonPanel = new JPanel();
+        nordTableButtonPanel = new JPanel(new BorderLayout(0, 0));
         nordTablePanel.add(nordTableButtonPanel, BorderLayout.NORTH);
-        nordTableButtonPanel.setLayout(new BorderLayout(0, 0));
 
-        lblNord = new JLabel("NORD");
+        lblNord = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.viaggi.nord"), TAHOMA_DEFAULT_FONT);
         lblNord.setHorizontalAlignment(SwingConstants.CENTER);
-        lblNord.setFont(new Font("Tahoma", Font.PLAIN, 15));
         nordTableButtonPanel.add(lblNord);
 
         panel_1 = new JPanel();
 
-        nordRemoveButton = new JButton("-");
-        nordRemoveButton.addActionListener(nordRemoveAction);
-
-        nordAddButton = new JButton("+");
-        nordAddButton.addActionListener(nordAddAction);
-
-        nordPinButton = new JButton("\u2193");
-        nordPinButton.addActionListener(viaggiPinAction);
-        nordPinButton.setActionCommand(NORD_PIN_COMMAND);
+        nordRemoveButton = ViaggiFrameUtils.newButton("-", viaggiRowsAction, NORD_REMOVE_ROW_COMMAND);
+        nordAddButton = ViaggiFrameUtils.newButton("+", viaggiRowsAction, NORD_ADD_ROW_COMMAND);
+        nordPinButton = ViaggiFrameUtils.newButton("\u2193", viaggiPinAction, NORD_PIN_COMMAND);
         panel_2.add(nordPinButton);
 
-        nordUnpinButton = new JButton("\u2191");
-        nordUnpinButton.addActionListener(viaggiUnPinAction);
-        nordUnpinButton.setActionCommand(NORD_UNPIN_COMMAND);
+        nordUnpinButton = ViaggiFrameUtils.newButton("\u2191", viaggiUnPinAction, NORD_UNPIN_COMMAND);
         panel_2.add(nordUnpinButton);
 
         panel_1.add(nordPinButton);
@@ -1067,18 +1091,12 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         panel_1.add(nordAddButton);
         nordTableButtonPanel.add(panel_1, BorderLayout.EAST);
 
-
-        panel_3.setLayout(new BorderLayout(0, 0));
-
         nordTableScrollPane = new JScrollPane(viaggiNordTable);
         //nordTablePanel.add(nordTableScrollPane, BorderLayout.CENTER);
 
         viaggiNordPinTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
         viaggiNordPinTable.setTableHeader(null);
-        viaggiNordPinTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
-        viaggiNordPinTableModel.addTableModelListener(viaggiPinnedTableListener);
-        viaggiNordPinTable.setModel(viaggiNordPinTableModel);
-        viaggiNordPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
+//TODO: viaggi nord pin table model declaration goes here
         nordPinScrollPane = new JScrollPane(viaggiNordPinTable);
         viaggiNordSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nordTableScrollPane, nordPinScrollPane);
         viaggiNordSplitPane.setDividerSize(3);
@@ -1104,9 +1122,8 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         otherPanel = new JPanel();
         panel_3.add(otherPanel, BorderLayout.SOUTH);
 
-        panel_6 = new JPanel();
+        panel_6 = new JPanel(new BorderLayout(0, 0));
         otherPanel.add(panel_6);
-        panel_6.setLayout(new BorderLayout(0, 0));
 
         fermiTxt = new JTextArea();
         fermiTxt.setColumns(40);
@@ -1119,12 +1136,11 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         fermiScrollPane = new JScrollPane(fermiTxt);
         panel_6.add(fermiScrollPane, BorderLayout.SOUTH);
 
-        lblFermi = new JLabel("Fermi assicurati");
+        lblFermi = new JLabel(strings.getString("mainframe.label.fermi.assicurati"));
         panel_6.add(lblFermi, BorderLayout.NORTH);
 
-        assNonAssicuratiPanel = new JPanel();
+        assNonAssicuratiPanel = new JPanel(new BorderLayout(0, 0));
         otherPanel.add(assNonAssicuratiPanel);
-        assNonAssicuratiPanel.setLayout(new BorderLayout(0, 0));
 
         nonAssicuratiTxt = new JTextArea();
         nonAssicuratiTxt.setTabSize(2);
@@ -1137,20 +1153,20 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         nonAssicuratiScrollPane = new JScrollPane(nonAssicuratiTxt);
         assNonAssicuratiPanel.add(nonAssicuratiScrollPane);
 
-        lblNonAssicurati = new JLabel("Non assicurati");
+        lblNonAssicurati = new JLabel(strings.getString("mainframe.label.non.assicurati"));
         assNonAssicuratiPanel.add(lblNonAssicurati, BorderLayout.NORTH);
 
-        btnSalvaFermiE = new JButton("Salva fermi e non ass.");
+        btnSalvaFermiE = new JButton(strings.getString("mainframe.button.fermi.nonass.save"));
         btnSalvaFermiE.addActionListener(salvaFermiENonAssAction);
         otherPanel.add(btnSalvaFermiE);
 
         southPanel = new JPanel(new BorderLayout());
         infoTextField = new MessageJLabel();
-        infoTextField.setInfoMessage("Benvenuto");
         southPanel.add(infoTextField, BorderLayout.CENTER);
         contentPane.add(southPanel, BorderLayout.SOUTH);
 
 
+        infoTextField.setInfoMessage(strings.getString("mainframe.infofield.welcome"));
         addListeners();
         setLocationByPlatform(true);
 
@@ -1170,62 +1186,78 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 //        }
 
 
-        /*panel.setBorder(new TitledBorder("panel"));
-        panel_1.setBorder(new TitledBorder("panel_1"));
-        panel_2.setBorder(new TitledBorder("panel_2"));
-        panel_3.setBorder(new TitledBorder("panel_3"));
-        panel_4.setBorder(new TitledBorder("panel_4"));
-        panel_5.setBorder(new TitledBorder("panel_5"));
-        panel_6.setBorder(new TitledBorder("panel_6"));
-        panel_8.setBorder(new TitledBorder("panel_8"));
-        assNonAssicuratiPanel.setBorder(new TitledBorder("assNonAssicuratiPanel"));
-        clientiTableSplitPane.setBorder(new TitledBorder("clientiTableSplitPane"));
-        discesaPanel.setBorder(new TitledBorder("discesaPanel"));
-        nordTableButtonPanel.setBorder(new TitledBorder("nordTableButtonPanel"));
-        nordTablePanel.setBorder(new TitledBorder("nordTablePanel"));
-        noteButtonPanel.setBorder(new TitledBorder("noteButtonPanel"));
-        notePanel.setBorder(new TitledBorder("notePanel"));
-        ordiniDiscesaButtonPanel.setBorder(new TitledBorder("ordiniDiscesaButtonPanel"));
-        ordiniSalitaTableButtonPanel.setBorder(new TitledBorder("ordiniSalitaTableButtonPanel"));
-        otherPanel.setBorder(new TitledBorder("otherPanel"));
-        salitaPanel.setBorder(new TitledBorder("salitaPanel"));
-        sudTablePanel.setBorder(new TitledBorder("sudTablePanel"));
-        sudTableButtonPanel.setBorder(new TitledBorder("sudTableButtonPanel"));
-        assNonAssicuratiPanel.setBorder(new TitledBorder("assNonAssicuratiPanel"));
-        titlePanel.setBorder(new TitledBorder("titlePanel"));
-        contentPane.setBorder(new TitledBorder("contentPane"));
-        NorthPanel.setBorder(new TitledBorder("NorthPanel"));
-        TablePanel.setBorder(new TitledBorder("TablePanel"));*/
+        if(DEBUG_FRAME) {
+            panel.setBorder(new TitledBorder("panel"));
+            panel_1.setBorder(new TitledBorder("panel_1"));
+            panel_2.setBorder(new TitledBorder("panel_2"));
+            panel_3.setBorder(new TitledBorder("panel_3"));
+            panel_4.setBorder(new TitledBorder("panel_4"));
+            panel_5.setBorder(new TitledBorder("panel_5"));
+            panel_6.setBorder(new TitledBorder("panel_6"));
+            panel_8.setBorder(new TitledBorder("panel_8"));
+            assNonAssicuratiPanel.setBorder(new TitledBorder("assNonAssicuratiPanel"));
+            clientiTableSplitPane.setBorder(new TitledBorder("clientiTableSplitPane"));
+            discesaPanel.setBorder(new TitledBorder("discesaPanel"));
+            nordTableButtonPanel.setBorder(new TitledBorder("nordTableButtonPanel"));
+            nordTablePanel.setBorder(new TitledBorder("nordTablePanel"));
+            noteButtonPanel.setBorder(new TitledBorder("noteButtonPanel"));
+            notePanel.setBorder(new TitledBorder("notePanel"));
+            ordiniDiscesaButtonPanel.setBorder(new TitledBorder("ordiniDiscesaButtonPanel"));
+            ordiniSalitaTableButtonPanel.setBorder(new TitledBorder("ordiniSalitaTableButtonPanel"));
+            otherPanel.setBorder(new TitledBorder("otherPanel"));
+            salitaPanel.setBorder(new TitledBorder("salitaPanel"));
+            sudTablePanel.setBorder(new TitledBorder("sudTablePanel"));
+            sudTableButtonPanel.setBorder(new TitledBorder("sudTableButtonPanel"));
+            assNonAssicuratiPanel.setBorder(new TitledBorder("assNonAssicuratiPanel"));
+            titlePanel.setBorder(new TitledBorder("titlePanel"));
+            contentPane.setBorder(new TitledBorder("contentPane"));
+            northPanel.setBorder(new TitledBorder("northPanel"));
+            tablePanel.setBorder(new TitledBorder("tablePanel"));
 
-        //southPanel.setBorder(new TitledBorder("southPanel"));
-        //sudTableScrollPane.setBorder(new TitledBorder("sudTableScrollPane"));
-        //nordTableScrollPane.setBorder(new TitledBorder("nordTableScrollPane"));
-        //clientiTableScrollPane.setBorder(new TitledBorder("clientiTableScrollPane"));
-        //scrollPane.setBorder(new TitledBorder("scrollPane"));
-        //fermiScrollPane.setBorder(new TitledBorder("fermiScrollPane"));
-        //nonAssicuratiScrollPane.setBorder(new TitledBorder("nonAssicuratiScrollPane"));
-        //noteScrollPane.setBorder(new TitledBorder("noteScrollPane"));
-        //viaggiSplitPane.setBorder(new TitledBorder("viaggiSplitPane"));
-        //clientiTableSplitPane.setBorder(new TitledBorder("clientiTableSplitPane"));
+            southPanel.setBorder(new TitledBorder("southPanel"));
+            sudTableScrollPane.setBorder(new TitledBorder("sudTableScrollPane"));
+            nordTableScrollPane.setBorder(new TitledBorder("nordTableScrollPane"));
+            clientiTableScrollPane.setBorder(new TitledBorder("clientiTableScrollPane"));
+            scrollPane.setBorder(new TitledBorder("scrollPane"));
+            fermiScrollPane.setBorder(new TitledBorder("fermiScrollPane"));
+            nonAssicuratiScrollPane.setBorder(new TitledBorder("nonAssicuratiScrollPane"));
+            noteScrollPane.setBorder(new TitledBorder("noteScrollPane"));
+            viaggiSplitPane.setBorder(new TitledBorder("viaggiSplitPane"));
+            clientiTableSplitPane.setBorder(new TitledBorder("clientiTableSplitPane"));
+        }
     }
 
-
-    @Override
-    public void updateCamionList() throws SQLException {
-        camions = dbs.getCamion();
-        ((ViaggiTableModel) viaggiNordTable.getModel()).setCamions(camions);
-        sudTableModel.setCamions(camions);
+/*    @Subscribe
+    public void updateCamionList(CamionEvent e) {
+//        camions = dbs.getCamion();
+//        ((ViaggiTableModel) viaggiNordTable.getModel()).setCamions(camions);
+//        sudTableModel.setCamions(camions);
         formattaTabelle();
-    }
+    }*/
 
 
     @Override
     public void reloadTableModel(Date d, int option) throws SQLException {
-        viaggiNordTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions));
+        viaggiNordTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD));
         viaggiNordTable.getModel().addTableModelListener(this);
         viaggiNordTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
 
+        viaggiSudTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD));
+        viaggiSudTable.getModel().addTableModelListener(this);
+        viaggiSudTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
+
+        viaggiNordPinTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD));
+        viaggiNordPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
+        ViaggiTableModel viaggiNordPinTableModel = (ViaggiTableModel) viaggiNordPinTable.getModel();
+        viaggiNordPinTableModel.addTableModelListener(viaggiPinnedTableListener);
+
+        viaggiSudPinTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD));
+        viaggiSudPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
+        ViaggiTableModel viaggiSudPinTableModel = (ViaggiTableModel) viaggiSudPinTable.getModel();
+        viaggiSudPinTableModel.addTableModelListener(viaggiPinnedTableListener);
+
         ViaggiTableModel nordTableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
+        ViaggiTableModel sudTableModel = (ViaggiTableModel) viaggiSudTable.getModel();
 
         if (option == RELOAD_RESETCONNECTION) {
             dbs.closeConnection();
@@ -1314,16 +1346,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     public void loadDate(Date d, int mode) {
         Calendar c = Calendar.getInstance();
         c.setTime(d);
-        int dow = c.get(Calendar.DAY_OF_WEEK);
-        switch(dow){
-            case 1: giornoSettLabel.setText("DOMENICA"); break;
-            case 2: giornoSettLabel.setText("LUNEDI"); break;
-            case 3: giornoSettLabel.setText("MARTEDI"); break;
-            case 4: giornoSettLabel.setText("MERCOLEDI"); break;
-            case 5: giornoSettLabel.setText("GIOVEDI"); break;
-            case 6: giornoSettLabel.setText("VENERDI"); break;
-            case 7: giornoSettLabel.setText("SABATO"); break;
-        }
+        int dow = c.get(Calendar.DAY_OF_WEEK) - 1; //-1 because  c.get(Calendar.DAY_OF_WEEK)  starts from 1
+        String[] weekDays = strings.getString("generic.week.days").split(",");
+        giornoSettLabel.setText(weekDays[dow]);
 
         try {
             reloadTableModel(d, mode);
@@ -1333,7 +1358,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             selectedDateLbl.setText(ViaggiUtils.createStringFromDate(currentDate));
 
             formattaTabelle();
-            updateCamionList();
+            //updateCamionList();
             resizePinTables();
         } catch (SQLException e) {
             logDatabaseError(e);
@@ -1409,24 +1434,13 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                                 if(newId > 0){
                                     tm.getElementAt(row-1).setId(newId);
                                     logger.info(tm.getElementAt(row-1).toString());
-                                }else {
-                                    onError(new IllegalArgumentException("Problemi nell'id del nuovo viaggio"));
-                                }
-                                JTable t = tm.getType() == Consts.VIAGGI_TM_TYPE_NORD ? viaggiNordTable : viaggiSudTable;
-                                /*t.requestFocus();
-                                t.changeSelection(row-1, 0, false, false);
-                                t.editCellAt(row-1, 0);*/
-                                if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD) {
-                                    viaggiNordTable.requestFocus();
-                                    viaggiNordTable.changeSelection(row-1, 0, false, false);
-                                    viaggiNordTable.editCellAt(row-1, 0);
                                 } else {
-                                    viaggiSudTable.changeSelection(row-1, 0, false, false);
-                                    viaggiSudTable.editCellAt(row-1, 0);
-                                    viaggiSudTable.requestFocus();
+                                    onError(new IllegalArgumentException("Invalid id returned from database"));
                                 }
+
+                                JTable t = tm.getType() == Consts.VIAGGI_TM_TYPE_NORD ? viaggiNordTable : viaggiSudTable;
+                                selectTableCell(t, row-1, 0);
                                 logger.info("ADD ROW!");
-                                //logger.info(modifiche.toString());
 
                                 notifyRowInserted("Viaggi " + inserted.getPosizione(), ""+newId, inserted.getData().toString());
                             }
@@ -1438,6 +1452,16 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     }
 
+    private void selectTableCell(JTable table, int row, int col) {
+        int rowCount = table.getRowCount();
+        if(row >= rowCount) { //must be 0 <= row <= rowCount-1
+            row = rowCount - 1; //if not we select the last row
+        }
+
+        table.changeSelection(row, col, false, false);
+        //table.editCellAt(row, col);
+        table.requestFocus();
+    }
 
     private void formattaTabelle(){
         //viaggiSplitPane.setDividerLocation(0.5);
@@ -1456,7 +1480,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         int h = viaggiNordSplitPane.getHeight();
         //logger.debug("SIZE" + h);
 
-        int maxRowCount = Math.max(viaggiSudPinTableModel.getRowCount(), viaggiNordPinTableModel.getRowCount());
+        int maxRowCount = Math.max(viaggiSudPinTable.getRowCount(), viaggiNordPinTable.getRowCount());
         maxRowCount = maxRowCount + 2;
         viaggiNordSplitPane.setDividerLocation(h - (20 * maxRowCount));
         viaggiSudSplitPane.setDividerLocation(h - (20 * maxRowCount));
@@ -1492,10 +1516,10 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             public void componentResized(ComponentEvent arg0) {
                 Component source = arg0.getComponent();
                 int newWidth = source.getWidth();
-                //int newHeight = TablePanel.getHeight()-10;
+                //int newHeight = tablePanel.getHeight()-10;
                 //int newHeight = source.getHeight();
-                int newHeight = TablePanel.getHeight();
-                TablePanel.setSize(new Dimension(newWidth, newHeight));
+                int newHeight = tablePanel.getHeight();
+                tablePanel.setSize(new Dimension(newWidth, newHeight));
 
                 //contentPane.setMaximumSize(source.getSize());
 
@@ -1505,7 +1529,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 sudTablePanel.setPreferredSize(new Dimension((newWidth/3)-10, (newHeight/2) + (int)(newHeight/3)));
                 //viaggiSplitPane.setPreferredSize(new Dimension((newWidth/2), (newHeight/2) + (int)(newHeight/3)));
 
-                notePanel.setPreferredSize(new Dimension((newWidth/3) - 20, TablePanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) + 20))));
+                notePanel.setPreferredSize(new Dimension((newWidth/3) - 20, tablePanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) + 20))));
                 //noteScrollPane.setPreferredSize(new Dimension((newWidth/3)-20, CenterPanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) +20 ))));
                 resizePinTables();
             }
@@ -1533,18 +1557,17 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private void logDatabaseError(SQLException e){
         logger.error(e.getMessage(), e);
         e.printStackTrace();
-        Msg.error(this, "Errore di connessione al database"
-                + "\nCodice errore: "+e.getErrorCode()+"\n"+e.getMessage());
+        Msg.error(this, MessageFormat.format(strings.getString("database.error"), e.getErrorCode(), e.getMessage()));
     }
 
     private void notifyRowUpdated(String table, String columnName, String newValue, String date) {
         logger.debug("Updated row on table: " + table + " Col: " + columnName + " Value: " + newValue);
-        String updateMessage = table + ": valore " + newValue  + " per la colonna " + columnName + " salvato con successo.";
+        String updateMessage = MessageFormat.format(strings.getString("mainframe.infofield.table.row.update"), table, newValue, columnName);
         try {
             DatabaseHelperChannel.getInstance().notifyRowUpdated(table, date);
         } catch (RemoteException e) {
             logger.error("DBH" , e);
-            updateMessage += " Tuttavia la modifica non sarà notificata agli altri clients a causa di un errore.";
+            updateMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
         }
 
         infoTextField.setInfoMessage(updateMessage);
@@ -1557,7 +1580,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             DatabaseHelperChannel.getInstance().notifyRowUpdated(table, date);
         } catch (RemoteException e) {
             logger.error("DBH" , e);
-            updateMessage += " Tuttavia la modifica non sarà notificata agli altri clients a causa di un errore.";
+            updateMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
         }
 
         infoTextField.setInfoMessage(updateMessage);
@@ -1565,12 +1588,12 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
     private void notifyRowInserted(String table, String newId, String date) {
         logger.info("Inserted new row in table: " + table + " With id: " + newId);
-        String insertMessage = table + ": nuova riga con id " + newId + " salvata con successo.";
+        String insertMessage = MessageFormat.format(strings.getString("mainframe.infofield.table.row.insert"), table, newId);
         try {
             DatabaseHelperChannel.getInstance().notifyRowInserted(table, date);
         } catch (RemoteException e) {
             logger.error("DBH", e);
-            insertMessage += " Tuttavia la modifica non sarà notificata agli altri clients a causa di un errore.";
+            insertMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
         }
 
         infoTextField.setInfoMessage(insertMessage);
@@ -1580,9 +1603,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         logger.error(error.getMessage(), error);
 
         if (error instanceof SQLException) {
-            infoTextField.setErrorMessage("Errore nel salvataggio dell'ultimo valore. Clicca qui per informazioni");
+            infoTextField.setErrorMessage(strings.getString("mainframe.infofield.database.error"));
         } else if (error instanceof RemoteException) {
-            infoTextField.setWarnMessage("Impossibile notificare le modifiche agli altri clients");
+            infoTextField.setWarnMessage(strings.getString("database.helper.communication.fail"));
         }
 
         infoTextField.addMouseListener(new MouseAdapter() {
@@ -1597,24 +1620,21 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     @Override
     public void onRowInserted(String tableName, String date, String who, long timestamp) {
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        infoTextField.setUploadMessage("Nuova riga inserita nella tabella " + tableName + " da " + who +
-                " " + elapsedSeconds + " secondi fa. Clicca qui per aggiornare");
+        infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.insert"), tableName, who, elapsedSeconds));
         infoTextField.addMouseListener(aggiornaOnClickAdapter);
     }
 
     @Override
     public void onRowUpdated(String tableName, String date, String who, long timestamp) {
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        infoTextField.setUploadMessage("Valore modificato nella tabella " + tableName + " da " + who +
-                " " + elapsedSeconds + " secondi fa. Clicca qui per aggiornare");
+        infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.update"), tableName, who, elapsedSeconds));
         infoTextField.addMouseListener(aggiornaOnClickAdapter);    }
 
     @Override
     public void onDateAdded(String date, String who, long timestamp) {
         Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        infoTextField.setUploadMessage("Nuova data aggiunta da " + who + " " + elapsedSeconds
-                + " secondi fa. Clicca qui per aggiornare");
+        infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.day.add"), who, elapsedSeconds));
         infoTextField.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -1629,7 +1649,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
         if(date1.equals(currentDate)) {
             EventQueue.invokeLater(() -> {
-                Msg.warn(MainFrame.this, "Questa data è stata cancellata da " + who);
+                Msg.warn(MainFrame.this, MessageFormat.format(strings.getString("database.helper.day.deleted"), who));
                 try {
                     lastDateFromDb = dbs.getDataAggiornamento();
                     loadDate(lastDateFromDb, RELOAD_RESETCONNECTION);
@@ -1640,17 +1660,15 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         }
     }
 
-    public MessageJLabel getMessageField() {
+    /*public MessageJLabel getMessageField() {
         return infoTextField;
     }
-
-    class ColumnChangeListener implements TableColumnModelListener
-    {
+*/
+    class ColumnChangeListener implements TableColumnModelListener {
         JTable sourceTable;
         JTable targetTable;
 
-        public ColumnChangeListener(JTable source, JTable target)
-        {
+        public ColumnChangeListener(JTable source, JTable target) {
             this.sourceTable = source;
             this.targetTable = target;
         }
@@ -1667,8 +1685,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
             targetModel.removeColumnModelListener(listener);
 
-            for (int i = 0; i < sourceModel.getColumnCount(); i++)
-            {
+            for (int i = 0; i < sourceModel.getColumnCount(); i++) {
                 targetModel.getColumn(i).setPreferredWidth(sourceModel.getColumn(i).getWidth());
             }
 

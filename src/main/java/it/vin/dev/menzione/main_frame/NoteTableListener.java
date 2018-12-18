@@ -19,7 +19,7 @@ public class NoteTableListener implements TableModelListener{
 	private UpdateWorkerListener<Nota> resultListener;
 	private Logger logger;
 	
-	public NoteTableListener(DatabaseService dbs) throws SQLException {
+	public NoteTableListener(DatabaseService dbs) {
 		//dbs = DatabaseService.create();
 		this.dbs = dbs;
 		logger = LogManager.getLogger(this.getClass());

@@ -11,6 +11,7 @@ import java.util.Vector;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableColumn;
@@ -34,8 +35,8 @@ import java.awt.event.ActionEvent;
 
 
 public class AggiungiDataFrame extends JFrame implements TableModelListener {
+    private final static boolean DEBUG_FRAME = ViaggiFrameUtils.DEBUG_FRAME;
 
-    private static final long serialVersionUID = 7870598458313964074L;
     private JPanel contentPane;
     private JTable viaggiNordTable;
     private JTable viaggiSudTable;
@@ -72,10 +73,9 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
 
-        setBounds(100, 100, 1200, 487);
-        contentPane = new JPanel();
+        setBounds(100, 100, 1200, 600);
+        contentPane = new JPanel(new BorderLayout(0, 0));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-        contentPane.setLayout(new BorderLayout(0, 0));
         setContentPane(contentPane);
 
         JPanel headerPanel = new JPanel();
@@ -86,9 +86,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         headerPanel.add(lblInserisciData);
 
         frmtdtxtfldData = new CustomDateTextField();
-
         frmtdtxtfldData.setFocusTraversalKeysEnabled(false);
-
         frmtdtxtfldData.addKeyListener(new KeyListener() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -121,27 +119,11 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
         headerPanel.add(frmtdtxtfldData);
 
-        JPanel centerPanel = new JPanel();
+        JPanel centerPanel = new JPanel(new GridBagLayout());
         contentPane.add(centerPanel, BorderLayout.CENTER);
+        JPanel panel_4 = new JPanel(new BorderLayout(0, 0));
 
-        try {
-            lastDate = dbu.getDataAggiornamento();
-            createDatiToDB(lastDate);
-        } catch (SQLException e1) {
-            databaseError(e1);
-        }
-
-
-        JPanel panel_4 = new JPanel();
-        centerPanel.add(panel_4);
-        panel_4.setLayout(new BorderLayout(0, 0));
-
-        JPanel panel_6 = new JPanel();
-        FlowLayout flowLayout = (FlowLayout) panel_6.getLayout();
-        flowLayout.setVgap(0);
-        flowLayout.setHgap(0);
-        flowLayout.setAlignment(FlowLayout.TRAILING);
-        panel_4.add(panel_6, BorderLayout.NORTH);
+        JPanel panel_6 = new JPanel(new FlowLayout(FlowLayout.TRAILING, 0, 0));
 
         JButton nordAddButton = new JButton("+");
         nordAddButton.addActionListener(new ActionListener() {
@@ -161,20 +143,24 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         });
         panel_6.add(NordRemoveButton);
         panel_6.add(nordAddButton);
+        panel_4.add(panel_6, BorderLayout.NORTH);
 
-        viaggiNordTable = new JTable(nordTM);
+        viaggiNordTable = new JTable();
         viaggiNordTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         viaggiNordTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         viaggiNordTable.setCellSelectionEnabled(true);
-        centerPanel.add(viaggiNordTable);
 
-        JScrollPane scrollPane = new JScrollPane(viaggiNordTable);
-        scrollPane.setPreferredSize(new Dimension(500, 300));
+        JScrollPane scrollPane = new JScrollPane();
+        scrollPane.setViewportView(viaggiNordTable);
         panel_4.add(scrollPane);
 
-        JPanel panel_1 = new JPanel();
-        centerPanel.add(panel_1);
-        panel_1.setLayout(new GridLayout(5, 1, 10, 10));
+        centerPanel.add(panel_4, new GridBagConstraints(
+                0, 0, 1, 1, 1, 1,
+                GridBagConstraints.NORTHWEST, GridBagConstraints.BOTH,
+                new Insets(10, 10, 10, 10), 1, 1
+        ));
+
+        JPanel panel_1 = new JPanel(new GridLayout(2, 1, 10, 60));
 
         JButton button = new JButton(">");
         button.addActionListener(new ActionListener() {
@@ -192,9 +178,6 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         });
         panel_1.add(button);
 
-        JPanel panel_3 = new JPanel();
-        panel_1.add(panel_3);
-
         JButton button_1 = new JButton("<");
         button_1.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -211,16 +194,14 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         });
         panel_1.add(button_1);
 
-        JPanel panel_5 = new JPanel();
-        centerPanel.add(panel_5);
-        panel_5.setLayout(new BorderLayout(0, 0));
+        centerPanel.add(panel_1, new GridBagConstraints(
+                1, 0, 1, 1, 0.1, 0.1,
+                GridBagConstraints.CENTER, GridBagConstraints.NONE,
+                new Insets(0, 0, 0, 0), 0, 0));
 
-        JPanel panel_7 = new JPanel();
-        FlowLayout flowLayout_1 = (FlowLayout) panel_7.getLayout();
-        flowLayout_1.setVgap(0);
-        flowLayout_1.setAlignment(FlowLayout.TRAILING);
-        flowLayout_1.setHgap(0);
-        panel_5.add(panel_7, BorderLayout.NORTH);
+        JPanel panel_5 = new JPanel(new BorderLayout(0, 0));
+
+        JPanel panel_7 = new JPanel(new FlowLayout(FlowLayout.TRAILING, 0,0));
 
         JButton SudAddButton = new JButton("+");
         SudAddButton.addActionListener(new ActionListener() {
@@ -240,17 +221,21 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         });
         panel_7.add(SudRemoveButton);
         panel_7.add(SudAddButton);
-        viaggiSudTable = new JTable(sudTM);
+        panel_5.add(panel_7, BorderLayout.NORTH);
+
+        viaggiSudTable = new JTable();
         viaggiSudTable.setCellSelectionEnabled(true);
         viaggiSudTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane scrollPane_1 = new JScrollPane(viaggiSudTable);
-        scrollPane_1.setPreferredSize(new Dimension(500, 300));
+        //scrollPane_1.setPreferredSize(new Dimension(500, 300));
         panel_5.add(scrollPane_1);
 
-        JPanel panel_8 = new JPanel();
-        FlowLayout flowLayout_2 = (FlowLayout) panel_8.getLayout();
-        flowLayout_2.setAlignment(FlowLayout.TRAILING);
-        contentPane.add(panel_8, BorderLayout.SOUTH);
+        centerPanel.add(panel_5, new GridBagConstraints(
+                2, 0, 1, 1, 1, 1,
+                GridBagConstraints.NORTHEAST, GridBagConstraints.BOTH,
+                new Insets(10, 10, 10, 10), 1, 1));
+
+        JPanel panel_8 = new JPanel(new FlowLayout(FlowLayout.TRAILING));
 
         JButton SalvaBtn = new JButton("Salva");
         SalvaBtn.addActionListener(new ActionListener() {
@@ -265,11 +250,32 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
         });
         panel_8.add(SalvaBtn);
+        contentPane.add(panel_8, BorderLayout.SOUTH);
 
         viaggiNordTable.getModel().addTableModelListener(this);
         viaggiSudTable.getModel().addTableModelListener(this);
 
+        try {
+            lastDate = dbu.getDataAggiornamento();
+            createDatiToDB(lastDate);
+        } catch (SQLException e1) {
+            databaseError(e1);
+        }
+
         formattaTabelle();
+
+        if(DEBUG_FRAME) {
+            panel_1.setBorder(new TitledBorder("panel_1"));
+            panel_4.setBorder(new TitledBorder("panel_4"));
+            panel_5.setBorder(new TitledBorder("panel_5"));
+            panel_6.setBorder(new TitledBorder("panel_6"));
+            panel_7.setBorder(new TitledBorder("panel_7"));
+            panel_8.setBorder(new TitledBorder("panel_8"));
+            centerPanel.setBorder(new TitledBorder("centerPanel"));
+            headerPanel.setBorder(new TitledBorder("headerPanel"));
+        }
+
+        pack();
     }
 
     private void salva(){
@@ -288,37 +294,39 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             try{
                 int giaInToDB = toDB.size();
                 boolean giaInToDBOK = false;
-                if(newLastDate.after(lastDate)){
+                if(newLastDate.after(lastDate)) {
                     Vector<Viaggio> nordViaggi = tmNord.getData();
                     Vector<Viaggio> sudViaggi = tmSud.getData();
                     //Vector<Viaggio> toDB = new Vector<>();
                     int i = 0;
                     //int occorrenzeInNord = 0;
                     //int occorrenzeInSud = 0;
-                    for(Viaggio v : toDB){
-                        if(v.getData() == null){
+                    for(Viaggio v : toDB) {
+                        if(v.getData() == null) {
                             v.setData(newLastDate);
                             i++;
                         }
                     }
-                    if(i == giaInToDB){
+
+                    if(i == giaInToDB) {
                         giaInToDBOK = true;
                         i = 0;
                     }
-                    for(Viaggio v : nordViaggi){
+
+                    for(Viaggio v : nordViaggi) {
                         v.setData(newLastDate);
                         v.setPosizione(Viaggio.NORD);
                         toDB.add(v);
                         i++;
                     }
 
-                    if(i == nordViaggi.size()){
+                    if(i == nordViaggi.size()) {
                         nordOk = true;
                         i = 0;
                     }
 
                     if(nordOk){
-                        for(Viaggio v : sudViaggi){
+                        for(Viaggio v : sudViaggi) {
 
                             v.setData(newLastDate);
                             v.setPosizione(Viaggio.SUD);
@@ -334,12 +342,13 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                         int sum = nordTM.getData().size() + sudTM.getData().size();
 
                         //Aggiungo la data agli ordini
-                        for(Ordine o : ordiniToDB){
+                        for(Ordine o : ordiniToDB) {
                             o.setDate(newLastDate);
                         }
+
                         boolean ordiniOK = false;
                         int ordOK = 0;
-                        for(Ordine o : ordiniToDB){
+                        for(Ordine o : ordiniToDB) {
                             if(o.getDate() != null)
                                 ordOK++;
                         }
@@ -355,29 +364,32 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                         boolean noteOK = false;
                         if(fermiToDB.getData() != null && nonAssToDB.getData() != null) noteOK = true;
 
-                        if(giaInToDBOK && noteOK && ordiniOK && sudOK && nordOk && (toDB.size() - giaInToDB) == sum){
+                        if(giaInToDBOK && noteOK && ordiniOK && sudOK && nordOk && (toDB.size() - giaInToDB) == sum) {
                             creaData(toDB, newLastDate);
-                        }else{
+                        } else {
                             Msg.warn(this, "Impossibile creare la data. Controllare i dati");
                         }
                     }
-                }else{
+                } else {
                     Msg.warn(this, "Data inserita precedente all'ultima presente nel database");
                 }
-            }catch(Exception e){
+            } catch(Exception e) {
                 Msg.warn(this, "Impossibile creare la data.\nCausa: " + e.getMessage());
             }
 
         }
     }
 
+
     @SuppressWarnings("Duplicates")
-    private void createDatiToDB(Date lastDate) throws SQLException{
+    private void createDatiToDB(Date lastDate) throws SQLException {
         //Creo i camion
         camions = dbu.getCamion();
 
-        nordTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
-        sudTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TYPE_SUD, camions);
+        nordTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_NORD);
+        sudTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_SUD);
+        viaggiNordTable.setModel(nordTM);
+        viaggiSudTable.setModel(sudTM);
 
         //Creo i viaggi
         Vector<Viaggio> nordViaggiTMP = dbu.getViaggiBy(Viaggio.NORD, lastDate);
@@ -566,29 +578,29 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                 if(col==1){
                     Camion c = tm.getElementAt(row).getCamion();
                     if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
-                        if(sudTM.existsCamion(c) > 0){
+                        if(sudTM.existsCamion(c) > 0) {
                             sudTM.replaceCaratt(c.getTarga(), c.getCaratteristiche());
                         }
-                    }else if(tm.getType() == Consts.VIAGGI_TYPE_SUD){
-                        if(nordTM.existsCamion(c) > 0){
+                    }else if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
+                        if(nordTM.existsCamion(c) > 0) {
                             nordTM.replaceCaratt(c.getTarga(), c.getCaratteristiche());
                         }
                     }
                 }
             }
-        }else if(e.getType() == TableModelEvent.INSERT){
+        } else if(e.getType() == TableModelEvent.INSERT) {
             if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
                 viaggiNordTable.requestFocus();
                 viaggiNordTable.changeSelection(row-1, 0, false, false);
                 String t = tm.getElementAt(viaggiNordTable.getSelectedRow()).getCamion().getTarga();
-                if(t.trim().isEmpty()){
+                if(t.trim().isEmpty()) {
                     viaggiNordTable.editCellAt(row-1, 0);
                 }
-            }else {
+            } else {
                 viaggiSudTable.requestFocus();
                 viaggiSudTable.changeSelection(row-1, 0, false, false);
                 String t = tm.getElementAt(viaggiSudTable.getSelectedRow()).getCamion().getTarga();
-                if(t.trim().isEmpty()){
+                if(t.trim().isEmpty()) {
                     viaggiSudTable.editCellAt(row-1, 0);
                 }
             }

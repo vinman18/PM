@@ -99,7 +99,7 @@ public class OLDMainFrame2 extends JFrame implements TableModelListener {
 		viaggiNordTable.getModel().addTableModelListener(this);
 
 		viaggiSudTable = new ViaggiJTable(1);
-		sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TYPE_SUD, camions);
+		sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD, camions);
 		//viaggiSudTable.setBounds(944, 103, 400, 280);
 		viaggiSudTable.setModel(sudTableModel);
 		viaggiSudTable.getModel().addTableModelListener(this);

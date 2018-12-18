@@ -6,6 +6,10 @@ import javax.swing.border.EmptyBorder;
 
 import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.ViaggiUtils;
+import it.vin.dev.menzione.events.CamionInsertEvent;
+import it.vin.dev.menzione.events.CamionRemoveEvent;
+import it.vin.dev.menzione.events.CamionUpdateEvent;
+import it.vin.dev.menzione.events.ViaggiEventBus;
 import it.vin.dev.menzione.logica.Camion;
 import it.vin.dev.menzione.logica.DatabaseService;
 
@@ -14,7 +18,6 @@ import java.awt.event.WindowListener;
 import java.sql.SQLException;
 import java.util.Vector;
 
-import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
 
 import com.mysql.jdbc.MysqlDataTruncation;
@@ -32,8 +35,7 @@ import java.awt.event.ItemEvent;
 
 public class AggiungiCamionFrame extends JFrame implements WindowListener {
 
-	private static final long serialVersionUID = 6713597321982680053L;
-    private JPanel contentPane;
+	private JPanel contentPane;
     private JTextField txtFieldTarga;
     private JTextField txtFieldCaratt;
     private DatabaseService dbu;
@@ -44,6 +46,56 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
     private ReloadCallback callback;
     private Logger logger;
 
+    private final ActionListener addCamionListener = new ActionListener() {
+		public void actionPerformed(ActionEvent arg0) {
+			resultLabel.setText("");
+			String targa = txtFieldTarga.getText();
+			String caratt = txtFieldCaratt.getText();
+			targa = targa.toUpperCase();
+			caratt = caratt.toUpperCase();
+
+			if(!targa.trim().isEmpty() && !caratt.trim().isEmpty()){
+				Camion c = new Camion(targa, caratt);
+
+				if(!findCamionByTarga(targa)){
+					try {
+						dbu.aggiungiCamion(c);
+						updateCamionList();
+						resultLabel.setText("Aggiunta effettuata con successo");
+						//callback.updateCamionList();
+                        ViaggiEventBus.getInstance().post(new CamionInsertEvent(c));
+					} catch(MysqlDataTruncation e){
+						resultLabel.setText("ATTENZIONE: la targa deve avere 7 caratteri"
+								+ " (spazi inclusi)");
+					} catch (SQLException e) {
+						databaseError(e);
+					}
+				}else{
+					resultLabel.setText("ATTENZIONE: Esiste già un camion con la stessa targa");
+				}
+			}else{
+				resultLabel.setText("ATTENZIONE: i campi non sono compliati");
+			}
+		}
+	};
+
+    private final ActionListener removeCamionAction = new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+            Camion camion = (Camion) camionComboBox.getSelectedItem();
+            int result = Msg.yesno(null, "Sei sicuro di voler eliminare il camion con targa: " + camion.getTarga()+
+                    "?\nQuesta operazione non può essere annullata");
+            if (result == JOptionPane.YES_OPTION){
+                try {
+                    dbu.rimuoviCamion(camion);
+                    updateCamionList();
+                    //callback.updateCamionList();
+                    ViaggiEventBus.getInstance().post(new CamionRemoveEvent(camion));
+                } catch (SQLException e1) {
+                    databaseError(e1);
+                }
+            }
+        }
+    };
 
     private final ActionListener saveAction = new ActionListener() {
         public void actionPerformed(ActionEvent arg0) {
@@ -67,7 +119,9 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 
             try {
                 dbu.modificaCamion(c);
-                callback.updateCamionList();
+
+                ViaggiEventBus.getInstance().post(new CamionUpdateEvent(c));
+
                 Msg.info(root, "Modifica salvata con successo");
             } catch (SQLException e) {
                 logger.error(e.getMessage(), e);
@@ -81,17 +135,6 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 	 * Create the frame.
 	 */
 	public AggiungiCamionFrame(ReloadCallback callback) {
-		/*addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent arg0) {
-				try {
-					dbu.closeConnection();
-				} catch (SQLException e) {
-					e.printStackTrace();
-					logger.error(e.getMessage(), e);
-				}
-			}
-		});*/
 		logger = LogManager.getLogger(AggiungiCamionFrame.class);
         setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
 
@@ -174,37 +217,7 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 		});
 
 		JButton btnAggiungi = new JButton("Aggiungi");
-		btnAggiungi.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				resultLabel.setText("");
-				String targa = txtFieldTarga.getText();
-				String caratt = txtFieldCaratt.getText();
-				targa = targa.toUpperCase();
-				caratt = caratt.toUpperCase();
-
-				if(!targa.trim().isEmpty() && !caratt.trim().isEmpty()){
-					Camion c = new Camion(targa, caratt);
-
-					if(!findCamionByTarga(targa)){
-						try {
-							dbu.aggiungiCamion(c);
-							updateCamionList();
-							resultLabel.setText("Aggiunta effettuata con successo");
-							callback.updateCamionList();
-						} catch(MysqlDataTruncation e){
-							resultLabel.setText("ATTENZIONE: la targa deve avere 7 caratteri"
-									+ " (spazi inclusi)");
-						} catch (SQLException e) {
-							databaseError(e);
-						}
-					}else{
-						resultLabel.setText("ATTENZIONE: Esiste già un camion con la stessa targa");
-					}
-				}else{
-					resultLabel.setText("ATTENZIONE: i campi non sono compliati");
-				}
-			}
-		});
+		btnAggiungi.addActionListener(addCamionListener);
 		GridBagConstraints gbc_btnAggiungi = new GridBagConstraints();
 		gbc_btnAggiungi.insets = new Insets(0, 0, 5, 0);
 		gbc_btnAggiungi.gridx = 1;
@@ -269,24 +282,9 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 
 
         JButton btnRimuovi = new JButton("Rimuovi");
-        btnRimuovi.setVisible(false);
-        btnRimuovi.setEnabled(false);
-        btnRimuovi.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                Camion camion = (Camion) camionComboBox.getSelectedItem();
-                int result = Msg.yesno(null, "Sei sicuro di voler eliminare il camion con targa: " + camion.getTarga()+
-                        "?\nQuesta operazione non può essere annullata");
-                if (result == JOptionPane.YES_OPTION){
-                    try {
-                        dbu.rimuoviCamion(camion);
-                        updateCamionList();
-                        callback.updateCamionList();
-                    } catch (SQLException e1) {
-                        databaseError(e1);
-                    }
-                }
-            }
-        });
+        btnRimuovi.setVisible(true);
+        btnRimuovi.setEnabled(true);
+        btnRimuovi.addActionListener(removeCamionAction);
         modificaCamionPanel.add(btnRimuovi);
 
 		try {
@@ -340,12 +338,12 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
 
 	@Override
 	public void windowClosed(WindowEvent e) {
-		try {
-			callback.updateCamionList();
+/*		try {
+			//TODO: callback.updateCamionList();
 		} catch (SQLException e1) {
 			e1.printStackTrace();
 			logger.error(e1.getMessage(), e1);
-		}
+		}*/
 
 	}
 

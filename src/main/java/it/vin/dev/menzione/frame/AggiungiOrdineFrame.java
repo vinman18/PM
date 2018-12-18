@@ -49,7 +49,7 @@ public class AggiungiOrdineFrame extends JFrame {
         setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
 
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setBounds(100, 100, 288, 265);
+        setBounds(100, 100, 300, 300);
         contentPane = new JPanel();
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         contentPane.setLayout(new BorderLayout(0, 0));
@@ -65,7 +65,7 @@ public class AggiungiOrdineFrame extends JFrame {
         centerPanel.setLayout(null);
 
         JLabel lblData = new JLabel("Data:");
-        lblData.setBounds(10, 45, 27, 14);
+        lblData.setBounds(10, 45, 50, 14);
         centerPanel.add(lblData);
 
         txtData = new JTextField();
@@ -74,7 +74,7 @@ public class AggiungiOrdineFrame extends JFrame {
         txtData.setColumns(10);
 
         JLabel lblCliente = new JLabel("Cliente:");
-        lblCliente.setBounds(10, 93, 37, 14);
+        lblCliente.setBounds(10, 93, 50, 14);
         centerPanel.add(lblCliente);
 
         txtCliente = new JTextField();
@@ -116,18 +116,6 @@ public class AggiungiOrdineFrame extends JFrame {
                 String note = txtrNote.getText();
                 Ordine o = new Ordine(data, cliente, note, dataOrdine);
                 o.setType(type);
-
-                //OrdiniTableModel tm = (OrdiniTableModel) ordineTable.getModel();
-                //tm.addRow(o);
-				/*try {
-					dbs.aggiungiOrdine(o);
-					source.reloadOrdiniModel(dataOrdine);
-				} catch (SQLException e) {
-					logger.error(e.getMessage(), e);
-					Msg.error(root, "Errore di connessione al database"
-							+ "\nCodice errore:"+e.getErrorCode()+"\n"+e.getMessage());
-					e.printStackTrace();
-				}*/
 
                 OrdiniUpdateWorker.connect(dbs)
                         .insert(o)
