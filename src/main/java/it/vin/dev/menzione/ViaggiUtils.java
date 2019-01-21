@@ -1,12 +1,8 @@
 package it.vin.dev.menzione;
 
-import it.vin.dev.menzione.logica.Camion;
-import it.vin.dev.menzione.logica.Ordine;
-import it.vin.dev.menzione.logica.Viaggio;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +10,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
-import java.util.List;
+import java.util.ResourceBundle;
 
 public class ViaggiUtils {
 
@@ -80,56 +76,24 @@ public class ViaggiUtils {
         return result;
     }
 
-    public static Camion findCamionByTarga(List<Camion> camions, String targa) throws IllegalArgumentException{
-        for(Camion c : camions){
-            if(c.getTarga().compareTo(targa) == 0)
-                return c;
-        }
-        throw new IllegalArgumentException("Impossibile trovare un camion con targa " + targa + ".");
-    }
+    public static String createStringFromDate(Date d, boolean compactString) {
+        int year, month, day;
+        String[] data = d.toString().split("-");
+        year = Integer.parseInt(data[0]);
+        month = Integer.parseInt(data[1]);
+        day = Integer.parseInt(data[2]);
 
-    public static String getViaggioValueByColumnIndex(Viaggio v, int col) {
-        switch (col) {
-            case 0:
-                return v.getCamion().getTarga();
-            case 1:
-                return v.getCamion().getCaratteristiche();
-            case 2:
-                return v.getAutista();
-            case 3:
-                return v.getNote();
-            case 4:
-                return Viaggio.NORD.equals(v.getPosizione())
-                        ? v.isSelezionato() ? "Selezionato" : "Deselezionato"
-                        : String.valueOf(v.getLitriB());
-            case 5:
-                return v.isSelezionato() ? "Selezionato" : "Deselezionato";
-            default:
-                return null;
-        }
-    }
+        //String dat = day + "-" + month +"-"+year;
+        String[] months = ResourceBundle.getBundle("Localization/Strings").getString("generic.months").split(",");
 
-    public static String getOrdineValueFromColumnIndex(Ordine ordine, int col) {
-        switch (col) {
-            case 0:
-                return ordine.getSelezionato() ? "Selezionato" : "Deselezionato";
-            case 1:
-                return ordine.getData();
-            case 2:
-                return ordine.getCliente();
-            case 3:
-                return ordine.getNote();
-            default:
-                return null;
-        }
-    }
+        String dat;
 
-    public static String createStringFromDate(Date d) {
-        String anno, mese, giorno;String[] data = d.toString().split("-");
-        anno = data[0];
-        mese = data[1];
-        giorno = data[2];
-        String dat = giorno + "-" + mese +"-"+anno;
+        if(compactString) {
+            dat = String.format("%d-%d-%d", day, month, year);
+        } else {
+            dat = String.format("%d %s %d", day, months[month - 1], year);
+        }
+
         return dat;
     }
 

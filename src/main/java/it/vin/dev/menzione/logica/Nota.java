@@ -1,6 +1,7 @@
 package it.vin.dev.menzione.logica;
 
 import java.sql.Date;
+import java.util.Objects;
 
 public class Nota {
 	
@@ -63,4 +64,20 @@ public class Nota {
 	public void setTipo(String tipo) {
 		this.tipo = tipo;
 	}
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Nota nota = (Nota) o;
+        return id == nota.id &&
+                Objects.equals(data, nota.data) &&
+                Objects.equals(testo, nota.testo) &&
+                Objects.equals(tipo, nota.tipo);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, data, testo, tipo);
+    }
 }

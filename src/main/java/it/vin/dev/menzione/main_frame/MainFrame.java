@@ -1,25 +1,28 @@
 package it.vin.dev.menzione.main_frame;
 
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.TitledBorder;
-import javax.swing.event.*;
-import javax.swing.table.TableColumnModel;
-
+import com.google.common.eventbus.Subscribe;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.Msg;
+import it.vin.dev.menzione.VerboseLogger;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.database_helper.DatabaseHelperListener;
+import it.vin.dev.menzione.events.NewDateAddedEvent;
+import it.vin.dev.menzione.events.ViaggiEventBus;
 import it.vin.dev.menzione.frame.*;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.workers.NoteUpdateWorker;
 import it.vin.dev.menzione.workers.UpdateWorkerAdapter;
 import it.vin.dev.menzione.workers.UpdateWorkerListener;
 import it.vin.dev.menzione.workers.ViaggiUpdateWorker;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.ThreadContext;
 
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.event.*;
+import javax.swing.table.TableColumnModel;
+import javax.swing.table.TableModel;
+import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -29,11 +32,12 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.*;
+import java.util.List;
 
 
-@SuppressWarnings("FieldCanBeLocal")
-public class MainFrame extends JFrame implements TableModelListener, ReloadCallback, DatabaseHelperListener{
-    private final boolean DEBUG_FRAME = false;
+@SuppressWarnings({"FieldCanBeLocal", "Duplicates"})
+public class MainFrame extends JFrame implements TableModelListener, DatabaseHelperListener{
+    private static final boolean DEBUG_FRAME = ViaggiFrameUtils.DEBUG_FRAME;
 
     private static final int RELOAD_STANDARD = 0;
     public static final int RELOAD_RESETCONNECTION = 1;
@@ -55,13 +59,13 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
     private ResourceBundle strings = ResourceBundle.getBundle("Localization/Strings");
 
-    private Date lastDateFromDb;
+    //    private Date lastDateFromDb;
     private DatabaseService dbs;
 
-    private Logger logger;
+    private VerboseLogger logger = VerboseLogger.create(MainFrame.class);
 
     private Date currentDate;
-    public  Vector<Camion> camions;
+//    public  Vector<Camion> camions;
 
     private JPanel contentPane;
     private JScrollPane sudTableScrollPane;
@@ -73,7 +77,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private JScrollPane nonAssicuratiScrollPane;
     private JScrollPane noteScrollPane;
     private JSplitPane viaggiSplitPane;
-    private JSplitPane clientiTableSplitPane;
+    //    private JSplitPane clientiTableSplitPane;
     private ViaggiJTable viaggiSudTable;
     private JScrollPane sudPinScrollPane;
     private ViaggiJTable viaggiSudPinTable;
@@ -88,10 +92,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private ViaggiJTable viaggiNordPinTable;
     private JSplitPane viaggiNordSplitPane;
     private JFormattedTextField formattedTextField = new CustomDateTextField();
-    private JPanel northPanel = new JPanel();
+    private JPanel northPanel;
     private JLabel lblDateSelection;
     private JPanel tablePanel;
-    private JPanel titlePanel;
     private JLabel lblDataSelezionata;
     private JLabel selectedDateLbl;
     private JPanel nordTablePanel;
@@ -127,7 +130,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private JButton ordiniDiscesaAggiungiButton;
     private JButton ordiniDiscesaRimuoviButton;
     private JPanel panel_3;
-    private JPanel panel_5;
+    private JPanel centerLeftPanel;
     private JTable noteTable;
     private JPanel otherPanel;
     private JPanel notePanel;
@@ -159,15 +162,12 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         public void tableChanged(TableModelEvent e) {
             ViaggiTableModel model = (ViaggiTableModel) e.getSource();
             int row = e.getFirstRow();
-            int lastRow = e.getLastRow();
             int col = e.getColumn();
             int type = e.getType();
 
-            if(type == TableModelEvent.INSERT) {
-                row = row - 1;
-            }
 
-            logger.debug("viaggiPinTableListener: type=" + type + " row="+ row + " col="+ col);
+            logger.debug("viaggiPinTableListener: type={} row={}  col={}", type, row, col);
+
             if(type == TableModelEvent.UPDATE && col == TableModelEvent.ALL_COLUMNS) {
                 return;
             }
@@ -185,15 +185,20 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                     break;
             }
 
+            logger.verbose("ViaggiPinnedTableListener: element after operations: {}", v.toString());
+            logger.info("ViaggiPinnedTableListener: sending update to database...");
+
             ViaggiUpdateWorker.connect(dbs)
                     .update(v, col)
                     .onResult(new UpdateWorkerAdapter<Viaggio>() {
                         @Override
                         public void onUpdate(Viaggio updated, int col) {
+                            logger.info("ViaggiPinnedTableListener: update sent to database successfully!");
+                            logger.verbose("ViaggiPinnedTableListener: element returned from database: {}", updated.toString());
                             if(col == Viaggio.COL_PINNED) {
                                 infoTextField.setInfoMessage(strings.getString("mainframe.msg.move.viaggio.ok"));
                             } else {
-                                String value = ViaggiUtils.getViaggioValueByColumnIndex(updated, col);
+                                String value = String.valueOf(ViaggiTableModel.getViaggioValueByColumnIndex(updated, col));
                                 String columnName = Viaggio.NORD.equals(updated.getPosizione())
                                         ? viaggiNordTable.getColumnName(col)
                                         : viaggiSudTable.getColumnName(col);
@@ -204,6 +209,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
                         @Override
                         public void onError(Exception error) {
+                            logger.warn("ViaggiPinnedTableListener: update sent error logged in next line");
                             MainFrame.this.onError(error);
                         }
                     })
@@ -214,35 +220,55 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private UpdateWorkerListener<Ordine> ordiniUpdateResultListener = new UpdateWorkerListener<Ordine>() {
         @Override
         public void onUpdate(Ordine updated, int col) {
+            logger.info("ordiniUpdateResultListener: update sent to database successfully!");
+            logger.verbose("ordiniUpdateResultListener: element returned form database: {}", updated.toString());
             String columnName = ordiniDiscesaTable.getColumnName(col);
-            String value = ViaggiUtils.getOrdineValueFromColumnIndex(updated, col);
+            String value = OrdiniTableModel.getOrdineValueFromColumnIndex(updated, col);
             notifyRowUpdated("Ordini", columnName, value, updated.getDate().toString());
         }
 
         @Override
         public void onError(Exception error) {
+            logger.warn("ordiniUpdateResultListener: error logged in next line");
             MainFrame.this.onError(error);
         }
 
         @Override
         public void onInsert(Ordine inserted, long newId) {
+            logger.info("ordiniUpdateResultListener: new row inserted into database successfully with id {}!", newId);
+            logger.verbose("ordiniUpdateResultListener: element returned from database: {}", inserted.toString());
             notifyRowInserted("Ordini", ""+newId, inserted.getDate().toString());
+
+            logger.verbose("ordiniUpdateResultListener: reloading ordini tables...");
+            try {
+                //TODO: change reloading from database entire data set with simply adding new row to table
+                reloadOrdiniModel(currentDate);
+            } catch (SQLException e) {
+                logger.warn("ordiniUpdateResultListener: ordini tables reload error logged in next line");
+                logDatabaseError(e);
+            }
         }
     };
 
     private final UpdateWorkerListener<Nota> noteUpdateResultListener = new UpdateWorkerListener<Nota>() {
         @Override
         public void onUpdate(Nota updated, int col) {
+            logger.info("noteUpdateResultListener: update sent to database successfully!");
+            logger.verbose("noteUpdateResultListener: element returned form database: ", updated.toString());
             notifyRowUpdated("Note", updated.getTipo(), updated.getTesto(), updated.getData().toString());
         }
 
         @Override
         public void onError(Exception error) {
+            logger.warn("noteUpdateResultListener: error logged in next line");
             MainFrame.this.onError(error);
         }
 
         @Override
         public void onInsert(Nota inserted, long newId) {
+            logger.info("noteUpdateResultListener: new row inserted into database successfully with id {}!", newId);
+            logger.verbose("noteUpdateResultListener: element returned form database: ", inserted.toString());
+
             notifyRowInserted("Note", ""+newId, inserted.getData().toString());
         }
     };
@@ -250,6 +276,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private MouseAdapter aggiornaOnClickAdapter = new MouseAdapter() {
         @Override
         public void mouseClicked(MouseEvent e) {
+            logger.info("aggiornaOnClickAdapter: reloading current date...");
             loadDate(currentDate, RELOAD_STANDARD);
             infoTextField.clearMessage();
         }
@@ -258,9 +285,10 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener openCamionFrameAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
+            logger.info("openCamionFrameAction: opening frame...");
             JButton b = (JButton) arg0.getSource();
             MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
-            JFrame aggiungiCamionFrame = new AggiungiCamionFrame(root);
+            JFrame aggiungiCamionFrame = new AggiungiCamionFrame();
             aggiungiCamionFrame.setVisible(true);
         }
     };
@@ -268,9 +296,10 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener openNewDateFrameAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
+            logger.info("openNewDateFrameAction: opening frame...");
             JButton b = (JButton) arg0.getSource();
             MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
-            JFrame inserisciGiornataFrame = new AggiungiDataFrame(root);
+            JFrame inserisciGiornataFrame = new AggiungiDataFrame();
             inserisciGiornataFrame.setVisible(true);
         }
     };
@@ -278,13 +307,15 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener goToLastDateAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-
+            logger.info("goToLastDateAction: going to last date...");
             try {
                 Date lastDate = dbs.getLastDate();
+                logger.verbose("goToLastDateAction: date returned from database: {}", lastDate.toString());
                 if(!currentDate.equals(lastDate)) {
                     loadDate(lastDate, RELOAD_STANDARD);
                 }
             } catch (SQLException e1) {
+                logger.warn("goToLastDateAction: date retreiving error logged in next line");
                 logDatabaseError(e1);
             }
         }
@@ -293,23 +324,27 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener dateExportAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent actionEvent) {
-
+            logger.info("dateExportAction: exporting date...");
             JButton b = (JButton) actionEvent.getSource();
             MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
             try {
-                new PdfReportBuilder(viaggiNordTable, viaggiSudTable, viaggiNordPinTable, viaggiSudPinTable, ordiniSalitaTable, ordiniDiscesaTable, noteTable, fermiTxt.getText(), nonAssicuratiTxt.getText(), selectedDateLbl.getText());
-//                JOptionPane.showMessageDialog(root, "Esportazione completata", "", JOptionPane.INFORMATION_MESSAGE);
+                //new PdfReportBuilder(viaggiNordTable, viaggiSudTable, viaggiNordPinTable, viaggiSudPinTable, ordiniSalitaTable, ordiniDiscesaTable, noteTable, fermiTxt.getText(), nonAssicuratiTxt.getText(), ViaggiUtils.createStringFromDate(currentDate, true));
+                PdfReportBuilderRemote pdfReportBuilder = new PdfReportBuilderRemote(currentDate);
+                File reportFile = pdfReportBuilder.startExport();
+                logger.verbose("dateExportAction: date export completed!");
                 Msg.info(root, strings.getString("mainframe.msg.export.ok"));
                 if (Desktop.isDesktopSupported()) {
                     try {
-                        File myFile = new File("Exports\\" +selectedDateLbl.getText()+".pdf");
-                        Desktop.getDesktop().open(myFile);
+                        logger.verbose("dateExportAction: opening file...");
+                        Desktop.getDesktop().open(reportFile);
                     } catch (IOException ex) {
+                        logger.warn("dateExportAction: no application registered fro PDFs");
+                        infoTextField.setErrorMessage(strings.getString("mainframe.msg.export.pdf.application.error"));
                         // no application registered for PDFs
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                logger.warn("dateExportAction: date export error logged in next line");
                 logger.error(e.getMessage(), e);
                 Msg.error(root, e.getMessage());
             }
@@ -319,22 +354,26 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener addOrderAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
+            logger.info("addOrderAction: opening add order frame...");
             Component source = (Component) arg0.getSource();
             MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
             String type = arg0.getActionCommand().equals(ORDINI_DISCESA_COMMAND)
                     ? Ordine.DISCESA
                     : Ordine.SALITA;
 
-            if(currentDate!=null){
+            logger.verbose("addOrderAction: command='{}', table={}", arg0.getActionCommand(), type);
+            if(currentDate != null) {
                 AggiungiOrdineFrame fr;
                 try {
-                    fr = new AggiungiOrdineFrame(root, type, currentDate);
+                    fr = new AggiungiOrdineFrame(type, currentDate);
                     fr.setResultListener(ordiniUpdateResultListener);
                     fr.setVisible(true);
                 } catch (SQLException e) {
+                    logger.warn("addOrderAction: opening frame error logged in next line");
                     logDatabaseError(e);
                 }
             }else{
+                logger.warn("addOrderAction: currentDate is null");
                 Msg.error(root, strings.getString("mainframe.msg.select.date"));
             }
         }
@@ -343,23 +382,34 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private final ActionListener removeOrderAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
-            OrdiniTable table = arg0.getActionCommand().equals(ORDINI_DISCESA_COMMAND)
+            String command = arg0.getActionCommand();
+            logger.verbose("removeOrderAction: requested row deleting with command '{}'", arg0.getActionCommand());
+            OrdiniTable table = command.equals(ORDINI_DISCESA_COMMAND)
                     ? ordiniDiscesaTable
                     : ordiniSalitaTable;
 
+            String tableType = command.equals(ORDINI_DISCESA_COMMAND) ? "DISCESA" : "SALITA";
             int rowSel = table.getSelectedRow();
             int colSel = table.getSelectedColumn();
 
             OrdiniTableModel tm = (OrdiniTableModel) table.getModel();
+
+            logger.info("removeOrderAction: removing order in row {} from table Ordini {}", rowSel, tableType);
+
             Ordine o = tm.removeRow(rowSel);
+
+            logger.verbose("removeOrderAction: order to remove: {}", o.toString());
+
             try {
                 dbs.rimuoviOrdine(o);
+                logger.info("removeOrderAction: order removed from database successfully!");
             } catch (SQLException e) {
                 tm.addRow(o);
+                logger.warn("removeOrderAction: order removing error logged in next line");
                 logDatabaseError(e);
             }
 
-            selectTableCell(table, rowSel, colSel);
+            ViaggiFrameUtils.selectTableCell(table, rowSel, colSel);
         }
     };
 
@@ -367,34 +417,37 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         public void actionPerformed(ActionEvent arg0) {
             Component source = (Component) arg0.getSource();
             MainFrame root = (MainFrame) SwingUtilities.getRoot(source);
+            logger.info("aggiungiNotaAction: adding new nota...");
 
             if (currentDate != null) {
-
                 Nota nuovo = new Nota(currentDate, "", Nota.NOTA);
 
+                logger.info("aggiungiNotaAction: sending new nota to database...");
                 NoteUpdateWorker.connect(dbs)
                         .insert(nuovo)
                         .onResult(new UpdateWorkerAdapter<Nota>() {
                             @Override
                             public void onError(Exception error) {
+                                logger.info("aggiungiNotaAction: database error logged in next line");
                                 MainFrame.this.onError(error);
                             }
 
                             @Override
                             public void onInsert(Nota inserted, long newId) {
-                                logger.info("New id = " + newId);
+                                logger.info("aggiungiNotaAction: new nota sent successfully with id {}" + newId);
                                 nuovo.setId(newId);
                                 NoteTableModel tm = (NoteTableModel) noteTable.getModel();
                                 tm.addRow(nuovo);
 
-                                int rows = noteTable.getRowCount();
+                                int rows = tm.getRowCount();
 
-                                selectTableCell(noteTable, rows-1, 0);
+                                ViaggiFrameUtils.selectTableCell(noteTable, rows-1, 0);
                                 notifyRowInserted("Note", ""+newId, inserted.getData().toString());
                             }
                         })
                         .execute();
             } else {
+                logger.info("aggiungiNotaAction: currentDate is null");
                 Msg.error(root, strings.getString("mainframe.msg.select.date"));
             }
 
@@ -408,25 +461,35 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             int selCol = noteTable.getSelectedColumn();
 
             NoteTableModel tm = (NoteTableModel) noteTable.getModel();
+
+            logger.info("deleteNoteAction: removing nota in row {}", selRow);
             Nota n = tm.removeRow(selRow);
+
+            logger.verbose("deleteNoteAction: nota to remove: {}", n.toString());
             try {
                 dbs.rimuoviNota(n);
+                logger.info("deleteNoteAction: nota deleted from database successfully!");
             } catch (SQLException e1) {
                 tm.addRow(n);
+                logger.warn("deleteNoteAction: nota delete error logged in next line");
                 logDatabaseError(e1);
             }
 
-            selectTableCell(noteTable, selRow, selCol);
+            ViaggiFrameUtils.selectTableCell(noteTable, selRow, selCol);
         }
     };
 
     private final ActionListener salvaFermiENonAssAction = new ActionListener() {
         public void actionPerformed(ActionEvent e) {
+            logger.info("salvaFermiENonAssAction: saving fermi e non assicurati note...");
+
             UpdateWorkerListener<Nota> resultListener = new UpdateWorkerListener<Nota>() {
                 @SuppressWarnings("Duplicates")
                 @Override
                 public void onInsert(Nota inserted, long newId) {
                     String message = null;
+                    logger.info("salvaFermiENonAssAction: nota '{}' inserted into database successfully!", inserted.getTipo());
+                    logger.verbose("salvaFermiENonAssAction: element returned from database: {}", inserted.toString());
                     if(Nota.FERMI.equals(inserted.getTipo())) {
                         message = strings.getString("mainframe.msg.fermi.nonass.save.ok");
                         fermiNota = inserted;
@@ -443,6 +506,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 @Override
                 public void onUpdate(Nota updated, int col) {
                     String message = null;
+                    logger.info("salvaFermiENonAssAction: nota '{}' updated successfully!", updated.getTipo());
+                    logger.verbose("salvaFermiENonAssAction: element returned from database: {}", updated.toString());
+
                     if(Nota.FERMI.equals(updated.getTipo())) {
                         message = strings.getString("mainframe.msg.fermi.nonass.save.ok");
                         fermiNota = updated;
@@ -458,44 +524,56 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
                 @Override
                 public void onError(Exception error) {
+                    logger.warn("salvaFermiENonAssAction: fermi e non ass save error logged in next line");
                     MainFrame.this.onError(error);
                 }
             };
 
+            NoteUpdateWorker fermiNotaUpdateWorker;
+
             if(fermiNota == null) {
+                logger.info("salvaFermiENonAssAction: 'fermi' nota is null, saving new one into database...");
                 fermiNota = new Nota(currentDate, fermiTxt.getText(), Nota.FERMI);
-                NoteUpdateWorker.connect(dbs)
+                fermiNotaUpdateWorker = NoteUpdateWorker.connect(dbs)
                         .insert(fermiNota)
-                        .onResult(resultListener)
-                        .execute();
+                        .onResult(resultListener);
             } else {
+                logger.info("salvaFermiENonAssAction: 'fermi' nota already exists, updating...");
+                logger.verbose("salvaFermiENonAssAction: element before update: {}", fermiNota.toString());
                 fermiNota.setTesto(fermiTxt.getText());
-                NoteUpdateWorker.connect(dbs)
+                fermiNotaUpdateWorker = NoteUpdateWorker.connect(dbs)
                         .update(fermiNota)
-                        .onResult(resultListener)
-                        .execute();
+                        .onResult(resultListener);
             }
 
+            logger.verbose("salvaFermiENonAssAction: element to save into database: {}", fermiNota.toString());
+            fermiNotaUpdateWorker.execute();
+
+
+            NoteUpdateWorker nonAssNotaUpdateWorker;
             if(nonAssNota == null) {
+                logger.info("salvaFermiENonAssAction: 'nonAss' nota is null, saving new one into database...");
                 nonAssNota = new Nota(currentDate, fermiTxt.getText(), Nota.NONASS);
-                NoteUpdateWorker.connect(dbs)
+                nonAssNotaUpdateWorker = NoteUpdateWorker.connect(dbs)
                         .insert(nonAssNota)
-                        .onResult(resultListener)
-                        .execute();
+                        .onResult(resultListener);
             } else {
+                logger.info("salvaFermiENonAssAction: 'nonAss' nota already exists, updating...");
+                logger.verbose("salvaFermiENonAssAction: element before update: {}", nonAssNota.toString());
                 nonAssNota.setTesto(nonAssicuratiTxt.getText());
-                NoteUpdateWorker.connect(dbs)
+                nonAssNotaUpdateWorker = NoteUpdateWorker.connect(dbs)
                         .update(nonAssNota)
-                        .onResult(resultListener)
-                        .execute();
+                        .onResult(resultListener);
             }
-
+            logger.verbose("salvaFermiENonAssAction: element to save into database: {}", nonAssNota.toString());
+            nonAssNotaUpdateWorker.execute();
         }
     };
 
     private ActionListener reloadAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
+            logger.info("reloadAction: reloading currentDate {} with RELOAD_RESETCONNECTION flag", ViaggiUtils.createStringFromDate(currentDate, false));
             loadDate(currentDate, MainFrame.RELOAD_RESETCONNECTION);
         }
     };
@@ -506,22 +584,38 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             Component source = (Component) e.getSource();
             Component root = SwingUtilities.getRoot(source);
 
-            int resp1 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.1"), currentDate.toString()));
+            String currentDateString = ViaggiUtils.createStringFromDate(currentDate, true);
+            logger.info("deleteThisDayAction: deleting date {}", ViaggiUtils.createStringFromDate(currentDate, false));
+            logger.verbose("deleteThisDayAction: prompting first confirmation check...");
+            int resp1 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.1"), currentDateString));
 
             if(resp1 == JOptionPane.YES_OPTION) {
-                int resp2 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.2"), currentDate.toString()));
+                logger.verbose("deleteThisDayAction: first confirmation check passed, prompting second confirmation check...");
+                int resp2 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.2"), currentDateString));
 
                 if(resp2 == JOptionPane.YES_OPTION) {
+                    logger.verbose("deleteThisDayAction: second confirmation check passed, proceeding with database deletion...");
                     try {
                         dbs.deleteDate(currentDate);
+                        logger.info("deleteThisDayAction: date {} deleted successfully!", ViaggiUtils.createStringFromDate(currentDate, false));
+                        logger.info("deleteThisDayAction: sending remote notification to other clients...");
                         DatabaseHelperChannel.getInstance().notifyDateRemoved(currentDate.toString());
+                        logger.info("deleteThisDayAction: notification sended successfully!");
+                        logger.info("deleteThisDayAction: loading new last date...");
                         loadDate(dbs.getDataAggiornamento(), RELOAD_RESETCONNECTION);
                     } catch (SQLException e1) {
+                        logger.warn("deleteThisDayAction: database deletion error logged in next line");
                         logDatabaseError(e1);
                     } catch (RemoteException e1) {
+                        logger.warn("deleteThisDayAction: remote notification send error logged in next line");
+                        logger.error(e1.getMessage(), e1);
                         infoTextField.setWarnMessage(strings.getString("database.helper.communication.fail"));
                     }
+                } else {
+                    logger.verbose("deleteThisDayAction: operation cancelled by user");
                 }
+            } else {
+                logger.verbose("deleteThisDayAction: operation cancelled by user");
             }
         }
     };
@@ -532,6 +626,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             JTable table;
             ViaggiTableModel tableModel, pinTableModel;
 
+            logger.verbose("viaggiPinAction: requested pin action with command '{}'", e.getActionCommand());
             switch (e.getActionCommand()) {
                 case NORD_PIN_COMMAND:
                     table = viaggiNordTable;
@@ -550,17 +645,22 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             int selectedRow = table.getSelectedRow();
             int selectedColumn = table.getSelectedColumn();
 
+            logger.info("viaggiPinAction: moving row {} from table {} to table Pin {}", selectedRow, ViaggiTableModel.getTableModelName(tableModel), ViaggiTableModel.getTableModelName(pinTableModel));
+
             if(selectedRow < 0) {
+                logger.info("viaggiPinAction: no row selected");
                 return;
             }
+
             if(table.isEditing()) {
                 table.getCellEditor().cancelCellEditing();
             }
 
             Viaggio v = tableModel.removeRow(selectedRow);
+            logger.verbose("viaggiPinAction: element removed from table {}: {}", ViaggiTableModel.getTableModelName(tableModel), v.toString());
             pinTableModel.addRow(v);
 
-            selectTableCell(table, selectedRow, selectedColumn);
+            ViaggiFrameUtils.selectTableCell(table, selectedRow, selectedColumn);
         }
     };
 
@@ -569,6 +669,8 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         public void actionPerformed(ActionEvent e) {
             JTable pinTable;
             ViaggiTableModel tableModel, pinTableModel;
+
+            logger.verbose("viaggiUnPinAction: requested unpin action with command '{}'", e.getActionCommand());
 
             switch (e.getActionCommand()) {
                 case NORD_UNPIN_COMMAND:
@@ -599,7 +701,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             Viaggio v = pinTableModel.removeRow(selectedRow);
             tableModel.addRow(v);
 
-            selectTableCell(pinTable, selectedRow, selectedColumn);
+            ViaggiFrameUtils.selectTableCell(pinTable, viewSelectedRow, selectedColumn);
         }
     };
 
@@ -617,6 +719,8 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             String actionCommand = arg0.getActionCommand();
             ViaggiJTable table;
 
+            logger.verbose("viaggiRowsAction: requested action on Viaggi table with command '{}'", actionCommand);
+
             switch (actionCommand) {
                 case NORD_REMOVE_ROW_COMMAND:
                 case NORD_ADD_ROW_COMMAND:
@@ -631,6 +735,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             switch (actionCommand) {
                 case NORD_ADD_ROW_COMMAND:
                 case SUD_ADD_ROW_COMMAND:
+                    logger.info("viaggiRowsAction: adding new row to table {}...",
+                            ViaggiTableModel.getTableModelName(((ViaggiTableModel) table.getModel())));
+
                     ((ViaggiTableModel) table.getModel()).addRow(null);
                     break;
                 case NORD_REMOVE_ROW_COMMAND:
@@ -638,7 +745,11 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                     int selectedRow = table.getSelectedRow();
                     int selectedColumn = table.getSelectedColumn();
 
+                    logger.info("viaggiRowsAction: removing row {} from table {}...", selectedRow,
+                            ViaggiTableModel.getTableModelName((ViaggiTableModel) table.getModel()));
+
                     if(selectedRow < 0) {
+                        logger.info("viaggiRowsAction: invalid row selected");
                         return;
                     }
 
@@ -647,14 +758,18 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                     }
 
                     Viaggio removed = ((ViaggiTableModel) table.getModel()).removeRow(selectedRow);
+                    logger.verbose("viaggiRowsAction: element to remove from database: {}", removed.toString());
                     try {
+                        logger.verbose("viaggiRowsAction: sending remove request to database...");
                         dbs.rimuoviViaggio(removed);
+                        logger.info("viaggiRowsAction: element removed from database successfully!");
                     } catch (SQLException e) {
                         ((ViaggiTableModel) table.getModel()).addRow(removed);
+                        logger.warn("viaggiRowsAction: database remove error logged in next line");
                         logDatabaseError(e);
                     }
 
-                    selectTableCell(table, selectedRow, selectedColumn);
+                    ViaggiFrameUtils.selectTableCell(table, selectedRow, selectedColumn);
                     break;
             }
 
@@ -704,6 +819,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     private AbstractAction openConfigAction = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
+            logger.info("openConfigAction: opening frame...");
             SwingUtilities.invokeLater(
                     () -> ConfigFrame.open(WindowConstants.DO_NOTHING_ON_CLOSE)
             );
@@ -711,22 +827,23 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     };
 
     private void init() throws SQLException {
+        logger.verbose("init: creating frame icon...");
         this.setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
         tableColumnModelListenerMap = new HashMap<>();
 
-        logger = LogManager.getLogger(MainFrame.class);
-        lastDateFromDb = null;
         try {
-            logger.debug("Creating database connection...");
+            logger.info("init: connecting to database...");
             dbs = DatabaseService.create();
-            lastDateFromDb = dbs.getDataAggiornamento();
-            camions = dbs.getCamion();
+            logger.info("inti: database connection success!");
+//            lastDateFromDb = dbs.getDataAggiornamento();
         }catch (SQLException e) {
-            logger.fatal(e);
+            logger.warn("int: database connection error logged in next line");
+            logger.fatal(e.getMessage(), e);
             //String[] options = new String[] {"OK", "Impostazioni"};
 
             String[] options = strings.getString("mainframe.msg.options.ok.settings").split(",");
 
+            logger.info("init: prompting connection error message...");
             int ans = Msg.options(
                     rootPane,
                     strings.getString("generic.server.connection.fail"),
@@ -736,12 +853,16 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             );
 
             if(ans == 1) {
+                logger.info("init: user selected to open config frame");
                 ConfigFrame.open(WindowConstants.EXIT_ON_CLOSE);
                 throw new SQLException(e);
             } else {
+                logger.info("init: user selected to close application. Exiting...");
                 System.exit(1);
             }
         }
+
+        ViaggiEventBus.getInstance().register(this);
 
         rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("F12"), "openConfig");
         rootPane.getActionMap().put("openConfig", openConfigAction);
@@ -761,15 +882,21 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
         contentPane = new JPanel(new BorderLayout(0, 0));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-//        JScrollPane pp = new JScrollPane(contentPane);
         setContentPane(contentPane);
 
         //nordTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
 //        sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD);
 
-        contentPane.add(northPanel, BorderLayout.NORTH);
+        northPanel = new JPanel(new BorderLayout());
+        northPanel.setAlignmentY(Component.CENTER_ALIGNMENT);
+
+        JPanel northWestPanel = new JPanel();
+        JPanel northCenterPanel = new JPanel(new GridBagLayout());
+        JPanel northEastPanel = new JPanel();
+        GridBagConstraints gbc = new GridBagConstraints();
+
         lblDateSelection = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.date.selection"));
-        northPanel.add(lblDateSelection);
+        northWestPanel.add(lblDateSelection);
 
         formattedTextField.addKeyListener(new KeyAdapter() {
             @Override
@@ -784,7 +911,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 }
             }
         });
-        northPanel.add(formattedTextField);
+        northWestPanel.add(formattedTextField);
 
         JButton btnFind = ViaggiFrameUtils.newIconButton(
                 "/Icons/search16.png",
@@ -792,7 +919,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 e -> loadDateFromInsertedFormattedTextField(),
                 null
         );
-        northPanel.add(btnFind);
+        northWestPanel.add(btnFind);
 
         JButton reloadButton = ViaggiFrameUtils.newIconButton(
                 "/Icons/reload16.png",
@@ -800,36 +927,35 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 reloadAction,
                 null
         );
-
-        northPanel.add(reloadButton);
+        northWestPanel.add(reloadButton);
 
         JButton btnGoToLastDate = ViaggiFrameUtils.newButton(
                 strings.getString("mainframe.button.last.date"),
                 goToLastDateAction,
                 null
         );
-        northPanel.add(btnGoToLastDate);
-
-        titlePanel = new JPanel();
-        northPanel.add(titlePanel);
+        northWestPanel.add(btnGoToLastDate);
 
         lblDataSelezionata = ViaggiFrameUtils.newJLabel(
                 strings.getString("mainframe.label.date.selected"),
-                TAHOMA_DEFAULT_FONT
+                TAHOMA_DEFAULT_FONT.deriveFont(15f)
         );
-        titlePanel.add(lblDataSelezionata);
-
-        selectedDateLbl = ViaggiFrameUtils.newJLabel(
-                "",
-                TAHOMA_DEFAULT_FONT
-        );
-        titlePanel.add(selectedDateLbl);
+        gbc.gridx = 0; gbc.gridy = 0; gbc.gridwidth = 2; gbc.insets = new Insets(1, 1,1, 1);
+        northCenterPanel.add(lblDataSelezionata, gbc);
 
         giornoSettLabel = ViaggiFrameUtils.newJLabel(
                 "",
-                TAHOMA_DEFAULT_FONT
+                TAHOMA_DEFAULT_FONT.deriveFont(Font.BOLD, 20)
         );
-        titlePanel.add(giornoSettLabel);
+        gbc.gridx = 0; gbc.gridy = 1; gbc.gridwidth = 1;
+        northCenterPanel.add(giornoSettLabel, gbc);
+
+        selectedDateLbl = ViaggiFrameUtils.newJLabel(
+                "",
+                TAHOMA_DEFAULT_FONT.deriveFont(Font.BOLD, 20)
+        );
+        gbc.gridx = 1; gbc.gridy = 1; gbc.gridwidth = 1; gbc.insets = new Insets(1, 3,1, 3);
+        northCenterPanel.add(selectedDateLbl, gbc);
 
         JButton btnDelete = ViaggiFrameUtils.newIconButton(
                 "/Icons/delete16.png",
@@ -837,33 +963,37 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 deleteThisDayAction,
                 null
         );
-        northPanel.add(btnDelete);
+        northEastPanel.add(btnDelete);
 
         JButton btnGestisciCamion = ViaggiFrameUtils.newButton(
                 strings.getString("mainframe.button.camion.managment"),
                 openCamionFrameAction,
                 null
         );
-        northPanel.add(btnGestisciCamion);
+        northEastPanel.add(btnGestisciCamion);
 
         JButton btnAggiungiGiornata = ViaggiFrameUtils.newButton(
                 strings.getString("mainframe.button.date.add"),
                 openNewDateFrameAction,
                 null
         );
-        northPanel.add(btnAggiungiGiornata);
+        northEastPanel.add(btnAggiungiGiornata);
 
         btnEsportaQuestaData = ViaggiFrameUtils.newButton(
                 strings.getString("mainframe.button.date.export"),
                 dateExportAction,
                 null
         );
-        northPanel.add(btnEsportaQuestaData);
+        northEastPanel.add(btnEsportaQuestaData);
 
+        northPanel.add(northWestPanel, BorderLayout.WEST);
+        northPanel.add(northCenterPanel, BorderLayout.CENTER);
+        northPanel.add(northEastPanel, BorderLayout.EAST);
+        contentPane.add(northPanel, BorderLayout.NORTH);
 
-        tablePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+        tablePanel = new JPanel(new GridBagLayout());/*
         tablePanel.setAlignmentY(Component.TOP_ALIGNMENT);
-        tablePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        tablePanel.setAlignmentX(Component.LEFT_ALIGNMENT);*/
         if(DEBUG_FRAME) {
             contentPane.add(new JScrollPane(tablePanel), BorderLayout.CENTER);
         } else {
@@ -900,6 +1030,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         ordiniSalitaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ordiniSalitaTable.setCellSelectionEnabled(true);
         ordiniSalitaTable.setModel(new OrdiniTableModel());
+        ordiniSalitaTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 //        tablePanel.add(ordiniSalitaTable);
 
         clientiTableScrollPane = new JScrollPane(ordiniSalitaTable);
@@ -941,6 +1072,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         ordiniDiscesaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ordiniDiscesaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         ordiniDiscesaTable.setModel(new OrdiniTableModel());
+        ordiniDiscesaTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
         lis = new OrdiniTableListener(dbs);
         lis.setUpdateWorkerListener(ordiniUpdateResultListener);
@@ -949,33 +1081,31 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
         scrollPane.setViewportView(ordiniDiscesaTable);
 
-        clientiTableSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, salitaPanel, discesaPanel);
+/*        clientiTableSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, salitaPanel, discesaPanel);
         clientiTableSplitPane.setVerifyInputWhenFocusTarget(false);
         clientiTableSplitPane.setDividerSize(1);
         clientiTableSplitPane.setBorder(null);
-        clientiTableSplitPane.setLayout(new BoxLayout(clientiTableSplitPane, BoxLayout.Y_AXIS));
+        clientiTableSplitPane.setLayout(new BoxLayout(clientiTableSplitPane, BoxLayout.Y_AXIS));*/
 
-        panel_5 = new JPanel(new BorderLayout(0, 0));
-        tablePanel.add(panel_5);
-        panel_5.add(clientiTableSplitPane);
 
+        centerLeftPanel = new JPanel(new GridBagLayout());
+        tablePanel.add(centerLeftPanel, new GridBagConstraints(0, 0, 1, 1, 0.5, 0.5, GridBagConstraints.NORTHWEST,
+                GridBagConstraints.BOTH, new Insets(1, 1, 1, 1), 1, 1));
+//        centerLeftPanel.add(clientiTableSplitPane);
         notePanel = new JPanel(new BorderLayout(0, 0));
-        panel_5.add(notePanel, BorderLayout.SOUTH);
+//        centerLeftPanel.add(notePanel, BorderLayout.SOUTH);
 
         noteScrollPane = new JScrollPane();
-        notePanel.add(noteScrollPane);
 
         noteTable = new JTable();
         noteTable.setModel(new NoteTableModel());
+        noteTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         noteListener = new NoteTableListener(dbs);
         noteListener.setResultListener(noteUpdateResultListener);
         noteTable.getModel().addTableModelListener(noteListener);
-
         noteScrollPane.setViewportView(noteTable);
 
         noteButtonPanel = new JPanel(new BorderLayout(0, 0));
-        notePanel.add(noteButtonPanel, BorderLayout.NORTH);
-
         lblNote = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.note"));
         lblNote.setHorizontalAlignment(SwingConstants.CENTER);
         noteButtonPanel.add(lblNote, BorderLayout.CENTER);
@@ -996,20 +1126,35 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
                 null
         );
         panel_8.add(noteAddButton);
+        notePanel.add(noteButtonPanel, BorderLayout.NORTH);
+        notePanel.add(noteScrollPane);
+
+
+        centerLeftPanel.add(salitaPanel, new GridBagConstraints(0, 0, 1, 1, 1, 1,
+                GridBagConstraints.NORTHEAST, GridBagConstraints.BOTH,
+                new Insets(1,1 ,1, 1), 1, 1));
+        centerLeftPanel.add(discesaPanel, new GridBagConstraints(0, 1, 1, 1, 1, 1,
+                GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                new Insets(1,1 ,1, 1), 1, 1));
+        centerLeftPanel.add(notePanel, new GridBagConstraints(0, 2, 1, 1, 0.5, 0.5,
+                GridBagConstraints.SOUTH, GridBagConstraints.BOTH,
+                new Insets(1,1 ,1, 1), 1, 1));
+
 
         sudTablePanel = new JPanel(new BorderLayout(0, 0));
 //        tablePanel.add(sudTablePanel);
 
         viaggiSudTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_SUD);
 //        tablePanel.add(viaggiSudTable);
-        viaggiSudTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE); //TODO: add this to all tables in frame
+        viaggiSudTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
         //TODO: viaggi sud table model definition goes here
         sudTableButtonPanel = new JPanel(new BorderLayout(0, 0));
         sudTablePanel.add(sudTableButtonPanel, BorderLayout.NORTH);
 
         panel_3 = new JPanel(new BorderLayout(0, 0));
-        tablePanel.add(panel_3);
+        tablePanel.add(panel_3, new GridBagConstraints(1, 0, 1, 1, 1, 1, GridBagConstraints.NORTHEAST,
+                GridBagConstraints.BOTH, new Insets(1, 1, 1, 1), 1, 1));
 
         lblSud = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.viaggi.sud"), TAHOMA_DEFAULT_FONT);
         lblSud.setHorizontalAlignment(SwingConstants.CENTER);
@@ -1049,12 +1194,14 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         panel_2.add(sudAddButton);
 
         sudTableScrollPane = new JScrollPane(viaggiSudTable);
-        sudTableScrollPane.setBorder(null);
+        sudTableScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
         viaggiSudPinTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_SUD);
         viaggiSudPinTable.setTableHeader(null);
+        viaggiSudPinTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         //TODO: viaggi sud pin table model definition goes here
         sudPinScrollPane = new JScrollPane(viaggiSudPinTable);
+        sudPinScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
         viaggiSudSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, sudTableScrollPane, sudPinScrollPane);
         viaggiSudSplitPane.setDividerSize(3);
@@ -1065,7 +1212,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
         viaggiNordTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
 //        tablePanel.add(viaggiNordTable);
-
+        viaggiNordTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         //TODO: viaggi nord table model definition goes here
 
         nordTableButtonPanel = new JPanel(new BorderLayout(0, 0));
@@ -1092,12 +1239,17 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         nordTableButtonPanel.add(panel_1, BorderLayout.EAST);
 
         nordTableScrollPane = new JScrollPane(viaggiNordTable);
+        nordTableScrollPane.setBorder(BorderFactory.createEmptyBorder());
         //nordTablePanel.add(nordTableScrollPane, BorderLayout.CENTER);
 
         viaggiNordPinTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
+
+
         viaggiNordPinTable.setTableHeader(null);
-//TODO: viaggi nord pin table model declaration goes here
+        viaggiNordPinTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
+        //TODO: viaggi nord pin table model declaration goes here
         nordPinScrollPane = new JScrollPane(viaggiNordPinTable);
+        nordPinScrollPane.setBorder(BorderFactory.createEmptyBorder());
         viaggiNordSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nordTableScrollPane, nordPinScrollPane);
         viaggiNordSplitPane.setDividerSize(3);
 
@@ -1114,7 +1266,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
         viaggiSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, nordTablePanel, sudTablePanel);
         viaggiSplitPane.setDividerSize(0);
-        viaggiSplitPane.setBorder(null);
+        viaggiSplitPane.setBorder(BorderFactory.createEmptyBorder());
         viaggiSplitPane.setAlignmentY(Component.CENTER_ALIGNMENT);
         viaggiSplitPane.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel_3.add(viaggiSplitPane);
@@ -1170,7 +1322,17 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         addListeners();
         setLocationByPlatform(true);
 
-        loadDate(lastDateFromDb, MainFrame.RELOAD_STANDARD);
+        logger.info("mainframe: retrieving last date from database...");
+
+        Date lastDateFromDb = null;
+        try {
+            lastDateFromDb = dbs.getDataAggiornamento();
+            logger.verbose("mainframe: date returned from databse: {}", lastDateFromDb.toString());
+            loadDate(lastDateFromDb, MainFrame.RELOAD_STANDARD);
+        } catch (SQLException e) {
+            logger.warn("mainframe: database last date retrieving error logged in next line");
+            logDatabaseError(e);
+        }
 /*        try {
             updateCamionList();
         }catch (SQLException e) {
@@ -1187,43 +1349,45 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
 
         if(DEBUG_FRAME) {
-            panel.setBorder(new TitledBorder("panel"));
-            panel_1.setBorder(new TitledBorder("panel_1"));
-            panel_2.setBorder(new TitledBorder("panel_2"));
-            panel_3.setBorder(new TitledBorder("panel_3"));
-            panel_4.setBorder(new TitledBorder("panel_4"));
-            panel_5.setBorder(new TitledBorder("panel_5"));
-            panel_6.setBorder(new TitledBorder("panel_6"));
-            panel_8.setBorder(new TitledBorder("panel_8"));
-            assNonAssicuratiPanel.setBorder(new TitledBorder("assNonAssicuratiPanel"));
-            clientiTableSplitPane.setBorder(new TitledBorder("clientiTableSplitPane"));
-            discesaPanel.setBorder(new TitledBorder("discesaPanel"));
-            nordTableButtonPanel.setBorder(new TitledBorder("nordTableButtonPanel"));
-            nordTablePanel.setBorder(new TitledBorder("nordTablePanel"));
-            noteButtonPanel.setBorder(new TitledBorder("noteButtonPanel"));
-            notePanel.setBorder(new TitledBorder("notePanel"));
-            ordiniDiscesaButtonPanel.setBorder(new TitledBorder("ordiniDiscesaButtonPanel"));
-            ordiniSalitaTableButtonPanel.setBorder(new TitledBorder("ordiniSalitaTableButtonPanel"));
-            otherPanel.setBorder(new TitledBorder("otherPanel"));
-            salitaPanel.setBorder(new TitledBorder("salitaPanel"));
-            sudTablePanel.setBorder(new TitledBorder("sudTablePanel"));
-            sudTableButtonPanel.setBorder(new TitledBorder("sudTableButtonPanel"));
-            assNonAssicuratiPanel.setBorder(new TitledBorder("assNonAssicuratiPanel"));
-            titlePanel.setBorder(new TitledBorder("titlePanel"));
-            contentPane.setBorder(new TitledBorder("contentPane"));
-            northPanel.setBorder(new TitledBorder("northPanel"));
-            tablePanel.setBorder(new TitledBorder("tablePanel"));
+            panel.setBorder(BorderFactory.createTitledBorder("panel"));
+            panel_1.setBorder(BorderFactory.createTitledBorder("panel_1"));
+            panel_2.setBorder(BorderFactory.createTitledBorder("panel_2"));
+            panel_3.setBorder(BorderFactory.createTitledBorder("panel_3"));
+            panel_4.setBorder(BorderFactory.createTitledBorder("panel_4"));
+            centerLeftPanel.setBorder(BorderFactory.createTitledBorder("centerLeftPanel"));
+            panel_6.setBorder(BorderFactory.createTitledBorder("panel_6"));
+            panel_8.setBorder(BorderFactory.createTitledBorder("panel_8"));
+            assNonAssicuratiPanel.setBorder(BorderFactory.createTitledBorder("assNonAssicuratiPanel"));
+//            clientiTableSplitPane.setBorder(BorderFactory.createTitledBorder("clientiTableSplitPane"));
+            discesaPanel.setBorder(BorderFactory.createTitledBorder("discesaPanel"));
+            nordTableButtonPanel.setBorder(BorderFactory.createTitledBorder("nordTableButtonPanel"));
+            nordTablePanel.setBorder(BorderFactory.createTitledBorder("nordTablePanel"));
+            noteButtonPanel.setBorder(BorderFactory.createTitledBorder("noteButtonPanel"));
+            notePanel.setBorder(BorderFactory.createTitledBorder("notePanel"));
+            ordiniDiscesaButtonPanel.setBorder(BorderFactory.createTitledBorder("ordiniDiscesaButtonPanel"));
+            ordiniSalitaTableButtonPanel.setBorder(BorderFactory.createTitledBorder("ordiniSalitaTableButtonPanel"));
+            otherPanel.setBorder(BorderFactory.createTitledBorder("otherPanel"));
+            salitaPanel.setBorder(BorderFactory.createTitledBorder("salitaPanel"));
+            sudTablePanel.setBorder(BorderFactory.createTitledBorder("sudTablePanel"));
+            sudTableButtonPanel.setBorder(BorderFactory.createTitledBorder("sudTableButtonPanel"));
+            assNonAssicuratiPanel.setBorder(BorderFactory.createTitledBorder("assNonAssicuratiPanel"));
+            northEastPanel.setBorder(BorderFactory.createTitledBorder("northEastPanel"));
+            northCenterPanel.setBorder(BorderFactory.createTitledBorder("northCenterPanel"));
+            northWestPanel.setBorder(BorderFactory.createTitledBorder("northWestPanel"));
+            contentPane.setBorder(BorderFactory.createTitledBorder("contentPane"));
+            northPanel.setBorder(BorderFactory.createTitledBorder("northPanel"));
+            tablePanel.setBorder(BorderFactory.createTitledBorder("tablePanel"));
 
-            southPanel.setBorder(new TitledBorder("southPanel"));
-            sudTableScrollPane.setBorder(new TitledBorder("sudTableScrollPane"));
-            nordTableScrollPane.setBorder(new TitledBorder("nordTableScrollPane"));
-            clientiTableScrollPane.setBorder(new TitledBorder("clientiTableScrollPane"));
-            scrollPane.setBorder(new TitledBorder("scrollPane"));
-            fermiScrollPane.setBorder(new TitledBorder("fermiScrollPane"));
-            nonAssicuratiScrollPane.setBorder(new TitledBorder("nonAssicuratiScrollPane"));
-            noteScrollPane.setBorder(new TitledBorder("noteScrollPane"));
-            viaggiSplitPane.setBorder(new TitledBorder("viaggiSplitPane"));
-            clientiTableSplitPane.setBorder(new TitledBorder("clientiTableSplitPane"));
+            southPanel.setBorder(BorderFactory.createTitledBorder("southPanel"));
+            sudTableScrollPane.setBorder(BorderFactory.createTitledBorder("sudTableScrollPane"));
+            nordTableScrollPane.setBorder(BorderFactory.createTitledBorder("nordTableScrollPane"));
+            clientiTableScrollPane.setBorder(BorderFactory.createTitledBorder("clientiTableScrollPane"));
+            scrollPane.setBorder(BorderFactory.createTitledBorder("scrollPane"));
+            fermiScrollPane.setBorder(BorderFactory.createTitledBorder("fermiScrollPane"));
+            nonAssicuratiScrollPane.setBorder(BorderFactory.createTitledBorder("nonAssicuratiScrollPane"));
+            noteScrollPane.setBorder(BorderFactory.createTitledBorder("noteScrollPane"));
+            viaggiSplitPane.setBorder(BorderFactory.createTitledBorder("viaggiSplitPane"));
+//            clientiTableSplitPane.setBorder(BorderFactory.createTitledBorder("clientiTableSplitPane"));
         }
     }
 
@@ -1235,13 +1399,29 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         formattaTabelle();
     }*/
 
+    @Subscribe
+    public void onNewDateAddedEvent(NewDateAddedEvent event) {
+        logger.verbose("onNewDateAddedEvent: received new NewDateAddedEvent. New last date: {}", ViaggiUtils.createStringFromDate(event.getNewLastDate(), false));
+        switch (event.getSource()) {
+            case ADD_DATE_FRAME:
+                loadDate(event.getNewLastDate(), RELOAD_RESETCONNECTION);
+                break;
+            case DATABASE_HELPER:
+                //no implemented yet
+                break;
+        }
+    }
 
-    @Override
-    public void reloadTableModel(Date d, int option) throws SQLException {
+
+    public void reloadTableModel(Date d) throws SQLException {
+        logger.info("reloadTableModel: reloading viaggi table models...");
+
+        logger.verbose("reloadTableModel: creating Viaggi NORD table model...");
         viaggiNordTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD));
         viaggiNordTable.getModel().addTableModelListener(this);
         viaggiNordTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
 
+        logger.verbose("reloadTableModel: creating Viaggi SUD table model...");
         viaggiSudTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD));
         viaggiSudTable.getModel().addTableModelListener(this);
         viaggiSudTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
@@ -1259,13 +1439,13 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         ViaggiTableModel nordTableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
         ViaggiTableModel sudTableModel = (ViaggiTableModel) viaggiSudTable.getModel();
 
-        if (option == RELOAD_RESETCONNECTION) {
-            dbs.closeConnection();
-            dbs.openConnection();
-        }
-
+        logger.info("reloadTableModel: retrieving NORD viaggi from database...");
         Vector<Viaggio> nord = dbs.getViaggiBy(Viaggio.NORD, d);
+
+        logger.info("reloadTableModel: retrieving NORD viaggi success! Retrieving SUD viaggi from database...");
         Vector<Viaggio> sud = dbs.getViaggiBy(Viaggio.SUD, d);
+        logger.info("reloadTableModel: retrieving SUD viaggi success! Moving retrieved data into tables...");
+
         Vector<Viaggio> sudNormal = new Vector<>();
         Vector<Viaggio> nordNormal = new Vector<>();
         Vector<Viaggio> nordPinned = new Vector<>();
@@ -1298,52 +1478,71 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         viaggiNordPinTableModel.setCurrentDate(d);
     }
 
-    @Override
+
     public void reloadOrdiniModel(Date d) throws SQLException {
+        logger.info("reloadOrdiniModel: reloading ordini table models...");
+
         OrdiniTableModel tmSalita = (OrdiniTableModel) ordiniSalitaTable.getModel();
         OrdiniTableModel tmDiscesa = (OrdiniTableModel) ordiniDiscesaTable.getModel();
 
         Vector<Ordine> salite = new Vector<>();
         Vector<Ordine> discese = new Vector<>();
 
+        logger.info("reloadOrdiniModel: retrieving ordini from database...");
         Vector<Ordine> fromDB = dbs.getOrdiniByDate(d);
-        for(Ordine o : fromDB){
-            if(o.getType().toLowerCase().compareTo(Ordine.SALITA.toLowerCase()) == 0){
+        logger.info("reloadOrdiniModel: ordini retrieved from database successfully! Moving ordini into tables...");
+
+        for(Ordine o : fromDB) {
+            if(Ordine.SALITA.toLowerCase().equals(o.getType().toLowerCase())) {
                 salite.addElement(o);
-            }else if(o.getType().toLowerCase().compareTo(Ordine.DISCESA.toLowerCase()) == 0){
+            } else if(Ordine.DISCESA.toLowerCase().equals(o.getType().toLowerCase())) {
                 discese.addElement(o);
             }
         }
+
         tmSalita.setData(salite);
         tmDiscesa.setData(discese);
 
+        logger.info("reloadOrdiniModel: ordini table models loaded successfully!");
     }
 
-    @Override
+
     public void reloadNote(Date d) throws SQLException {
+        logger.info("reloadNote: reloading note...");
+
+        fermiNota = null;
+        nonAssNota = null;
+
         fermiTxt.setText("");
         nonAssicuratiTxt.setText("");
         Vector<Nota> fromDB;
         Vector<Nota> toNoteTable = new Vector<>();
         NoteTableModel tm = (NoteTableModel) noteTable.getModel();
 
+        logger.info("reloadNote: retrieving note from database...");
         fromDB = dbs.getNoteByDate(d);
+        logger.info("reloadNote: note retrieved from database successfully!");
+
         for(Nota n : fromDB){
-            if(n.getTipo().compareTo(Nota.NOTA) == 0){
+            if(Nota.NOTA.equals(n.getTipo())){
                 toNoteTable.addElement(n);
-            }else if(n.getTipo().compareTo(Nota.FERMI) == 0){
+            }else if(Nota.FERMI.equals(n.getTipo())){
                 fermiNota = n;
                 fermiTxt.setText(fermiNota.getTesto());
-            }else if(n.getTipo().compareTo(Nota.NONASS) == 0){
+            }else if(Nota.NONASS.equals(n.getTipo())){
                 nonAssNota = n;
                 nonAssicuratiTxt.setText(nonAssNota.getTesto());
             }
         }
         tm.setData(toNoteTable);
+
+        logger.info("reloadNote: node loaded successfully!");
     }
 
-    @Override
+
     public void loadDate(Date d, int mode) {
+        String modeName = mode == RELOAD_STANDARD ? "RELOAD_STANDARD" : "RELOAD_RESETCONNECTION";
+        logger.info("loadDate: loading date '{}' with mode {}", d.toString(), modeName);
         Calendar c = Calendar.getInstance();
         c.setTime(d);
         int dow = c.get(Calendar.DAY_OF_WEEK) - 1; //-1 because  c.get(Calendar.DAY_OF_WEEK)  starts from 1
@@ -1351,16 +1550,28 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         giornoSettLabel.setText(weekDays[dow]);
 
         try {
-            reloadTableModel(d, mode);
+            if (mode == RELOAD_RESETCONNECTION) {
+                logger.info("loadDate: closing connection...");
+                dbs.closeConnection();
+                logger.info("loadDate: connection closed");
+                logger.info("loadDate: opening new connection...");
+                dbs.openConnection();
+                logger.info("loadDate: connection opened");
+            }
+
+            reloadTableModel(d);
             reloadOrdiniModel(d);
             reloadNote(d);
             currentDate = d;
-            selectedDateLbl.setText(ViaggiUtils.createStringFromDate(currentDate));
+            ThreadContext.put("currentDate", ViaggiUtils.createStringFromDate(currentDate, true));
+            selectedDateLbl.setText(ViaggiUtils.createStringFromDate(currentDate, false));
 
             formattaTabelle();
             //updateCamionList();
             resizePinTables();
+            logger.info("loadDate: date loaded");
         } catch (SQLException e) {
+            logger.warn("loadDate: load date database error logged in next line");
             logDatabaseError(e);
         }
     }
@@ -1371,7 +1582,7 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         try{
             d = ViaggiUtils.checkAndCreateDate(text, "/", false);
         }catch(NumberFormatException ex){
-            logger.info(ex.getMessage(), ex);
+            //logger.info(ex.getMessage(), ex);
             formattedTextField.setBackground(Color.RED);
         }
         if(d != null){
@@ -1391,14 +1602,24 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
             ViaggiTableModel tm = (ViaggiTableModel) e.getSource();
             Viaggio v;
             if(e.getType() == TableModelEvent.UPDATE){
-                logger.info("RIGA MODIFICATA: "+ row +"   COLONNA MODIFICATA: " + col);
                 v = tm.getElementAt(row);
+                logger.info("tableChanged: updated column {} ({}) in row {} of table {}",
+                        col,
+                        ViaggiTableModel.getViaggioColumnNameByIndex(tm, col),
+                        row,
+                        ViaggiTableModel.getTableModelName(tm)
+                );
+
+                logger.info("tableChanged: sending update to database...");
+                logger.verbose("tableChanged: element to update: {}", v.toString());
                 ViaggiUpdateWorker.connect(dbs)
                         .update(v, col)
                         .onResult(new UpdateWorkerAdapter<Viaggio>() {
                             @Override
                             public void onUpdate(Viaggio updated, int col) {
-                                String value = ViaggiUtils.getViaggioValueByColumnIndex(updated, col);
+                                logger.info("tableChanged: viaggio update sent to database successfully!");
+                                logger.verbose("tableChanged: element returned from database: {}", updated.toString());
+                                String value = String.valueOf(ViaggiTableModel.getViaggioValueByColumnIndex(updated, col));
                                 String columnName = Viaggio.NORD.equals(updated.getPosizione())
                                         ? viaggiNordTable.getColumnName(col)
                                         : viaggiSudTable.getColumnName(col);
@@ -1408,63 +1629,58 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
                             @Override
                             public void onError(Exception error) {
+                                logger.warn("tableChanged: viaggio update database error logged in next line");
                                 MainFrame.this.onError(error);
                             }
                         })
                         .execute();
             }else if(e.getType() == TableModelEvent.INSERT){
-                Viaggio nuovo = tm.getElementAt(row-1);
+                logger.info("tableChanged: inserted new row into table {}", ViaggiTableModel.getTableModelName(tm));
+                Viaggio nuovo = tm.getElementAt(row);
+                logger.verbose("tableChanged: viaggio inserted: {}", nuovo.toString());
                 if(nuovo.getId() >= 0) { //Inserted a row yet in database, so we haven't to insert into database
+                    logger.verbose("tableChanged: new row id >= 0. No further actions required");
                     return;
                 }
 
-                logger.info(nuovo.toString());
-
+                logger.info("tableChanged: sending new viaggio to database...");
                 ViaggiUpdateWorker.connect(dbs)
                         .insert(nuovo)
                         .onResult(new UpdateWorkerAdapter<Viaggio>() {
                             @Override
                             public void onError(Exception error) {
+                                logger.warn("tableChanged: viaggio insert database error logged in next line");
                                 MainFrame.this.onError(error);
                             }
                             @Override
                             public void onInsert(Viaggio inserted, long newId) {
-                                logger.info("LAST ID INSERTED: "+newId);
+                                logger.info("tableChanged: new viaggio sent successfully! New viaggio id = {}", newId);
+                                logger.verbose("tableChanged: viaggio returned from database: {}", inserted.toString());
 
                                 if(newId > 0){
-                                    tm.getElementAt(row-1).setId(newId);
-                                    logger.info(tm.getElementAt(row-1).toString());
+                                    tm.getElementAt(row).setId(newId);
                                 } else {
                                     onError(new IllegalArgumentException("Invalid id returned from database"));
                                 }
 
                                 JTable t = tm.getType() == Consts.VIAGGI_TM_TYPE_NORD ? viaggiNordTable : viaggiSudTable;
-                                selectTableCell(t, row-1, 0);
-                                logger.info("ADD ROW!");
+                                ViaggiFrameUtils.selectTableCell(t, row, 0);
 
                                 notifyRowInserted("Viaggi " + inserted.getPosizione(), ""+newId, inserted.getData().toString());
                             }
                         })
                         .execute();
             }else if(e.getType() == TableModelEvent.DELETE){
-                logger.info("ROW DELETED!");
+                logger.info("tableChanged: viaggio deleted from table {}", ViaggiTableModel.getTableModelName(tm));
+                Viaggio removed = tm.getElementAt(row);
+                logger.verbose("tableChanged: element removed from table: {}", removed.toString());
             }
         }
     }
 
-    private void selectTableCell(JTable table, int row, int col) {
-        int rowCount = table.getRowCount();
-        if(row >= rowCount) { //must be 0 <= row <= rowCount-1
-            row = rowCount - 1; //if not we select the last row
-        }
-
-        table.changeSelection(row, col, false, false);
-        //table.editCellAt(row, col);
-        table.requestFocus();
-    }
-
     private void formattaTabelle(){
         //viaggiSplitPane.setDividerLocation(0.5);
+        //TODO: persist user columns width preferences (maybe per date?)
         viaggiSplitPane.setResizeWeight(0.5);
 
         viaggiNordTable.doTableLayout();
@@ -1488,49 +1704,9 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     }
 
     private void addListeners(){
-/*        this.addWindowStateListener(new WindowStateListener() {
-            public void windowStateChanged(WindowEvent arg0) {
-                Component source = (Component) arg0.getComponent();
-
-
-				*//*int newWidth = source.getWidth();
-				int newHeight = CenterPanel.getHeight()-10;
-
-				//clientiNoteTablePanel.getWidth();
-				//clientiNoteTablePanel.getHeight();
-
-				if(arg0.getNewState() == Frame.MAXIMIZED_BOTH){
-					clientiTableSplitPane.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight/3.5)));
-					nordTablePanel.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight)));
-					sudTablePanel.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight)));
-					notePanel.setPreferredSize(new Dimension((newWidth/3)-20, CenterPanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5)))));
-					noteScrollPane.setPreferredSize(new Dimension((newWidth/3)-20, CenterPanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5)))));
-				}
-				*//*
-            }
-        });*/
-
-
         this.addComponentListener(new ComponentAdapter() {
             @Override
             public void componentResized(ComponentEvent arg0) {
-                Component source = arg0.getComponent();
-                int newWidth = source.getWidth();
-                //int newHeight = tablePanel.getHeight()-10;
-                //int newHeight = source.getHeight();
-                int newHeight = tablePanel.getHeight();
-                tablePanel.setSize(new Dimension(newWidth, newHeight));
-
-                //contentPane.setMaximumSize(source.getSize());
-
-                clientiTableSplitPane.setPreferredSize(new Dimension((newWidth/3)-20, (newHeight/2) + (int)(newHeight/3.5)));
-
-                nordTablePanel.setPreferredSize(new Dimension((newWidth/3)-10, (newHeight/2) + (int)(newHeight/3)));
-                sudTablePanel.setPreferredSize(new Dimension((newWidth/3)-10, (newHeight/2) + (int)(newHeight/3)));
-                //viaggiSplitPane.setPreferredSize(new Dimension((newWidth/2), (newHeight/2) + (int)(newHeight/3)));
-
-                notePanel.setPreferredSize(new Dimension((newWidth/3) - 20, tablePanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) + 20))));
-                //noteScrollPane.setPreferredSize(new Dimension((newWidth/3)-20, CenterPanel.getHeight()-((newHeight/2) + ((int)(newHeight/3.5) +20 ))));
                 resizePinTables();
             }
 
@@ -1539,12 +1715,15 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
         this.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent arg0) {
+                logger.info("windowClosing: exiting...");
                 try {
+                    logger.info("windowClosing: closing database connection...");
                     dbs.closeConnection();
+                    logger.verbose("windowClosing: closing database connection success!");
+                    logger.info("windowClosing: disconnecting from database helper server...");
                     DatabaseHelperChannel.getInstance().disconnect();
-                    //lis.closeConnection();
-                    //noteListener.closeConnection();
                 } catch (SQLException | RemoteException e) {
+                    logger.warn("windowsClosing: disconnection error logged in next line");
                     logger.error(e.getMessage(), e);
                     e.printStackTrace();
                 }
@@ -1555,43 +1734,49 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     }
 
     private void logDatabaseError(SQLException e){
-        logger.error(e.getMessage(), e);
+        logger.error("DATABASE", e);
         e.printStackTrace();
         Msg.error(this, MessageFormat.format(strings.getString("database.error"), e.getErrorCode(), e.getMessage()));
     }
 
     private void notifyRowUpdated(String table, String columnName, String newValue, String date) {
-        logger.debug("Updated row on table: " + table + " Col: " + columnName + " Value: " + newValue);
+        logger.verbose("notifyRowUpdated: updated row on table '{}'. Col {}. Value '{}", table, columnName, newValue);
         String updateMessage = MessageFormat.format(strings.getString("mainframe.infofield.table.row.update"), table, newValue, columnName);
-        try {
-            DatabaseHelperChannel.getInstance().notifyRowUpdated(table, date);
-        } catch (RemoteException e) {
-            logger.error("DBH" , e);
-            updateMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
-        }
+        updateMessage = dbhNotifyUpdateToClients(table, date, updateMessage);
 
         infoTextField.setInfoMessage(updateMessage);
     }
 
     private void notifyRowUpdated(String table, String date, String messageCustomText) {
-        logger.debug("Updated row on table: " + table + "Update message: " + messageCustomText);
+        logger.verbose("notifyRowUpdated: updated row on table '{}'. Update message: '{}'", table, messageCustomText);
         String updateMessage = table + ": " + messageCustomText;
-        try {
-            DatabaseHelperChannel.getInstance().notifyRowUpdated(table, date);
-        } catch (RemoteException e) {
-            logger.error("DBH" , e);
-            updateMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
-        }
+        updateMessage = dbhNotifyUpdateToClients(table, date, updateMessage);
 
         infoTextField.setInfoMessage(updateMessage);
     }
 
+    private String dbhNotifyUpdateToClients(String table, String date, String updateMessage) {
+        try {
+            logger.verbose("notifyRowUpdated: sending update info to other clients...");
+            DatabaseHelperChannel.getInstance().notifyRowUpdated(table, date);
+            logger.verbose("notifyRowUpdated: sending update info to other clients success!");
+        } catch (RemoteException e) {
+            logger.warn("notifyRowUpdated: sending update info to other clients error logged in next line");
+            logger.error("DBH" , e);
+            updateMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
+        }
+        return updateMessage;
+    }
+
     private void notifyRowInserted(String table, String newId, String date) {
-        logger.info("Inserted new row in table: " + table + " With id: " + newId);
+        logger.verbose("notifyRowInserted: inserted new row in table {} with id {}",  table, newId);
         String insertMessage = MessageFormat.format(strings.getString("mainframe.infofield.table.row.insert"), table, newId);
         try {
+            logger.verbose("notifyRowInserted: sending update info to other clients...");
             DatabaseHelperChannel.getInstance().notifyRowInserted(table, date);
+            logger.verbose("notifyRowInserted: sending update info to other clients success!");
         } catch (RemoteException e) {
+            logger.warn("notifyRowInserted: sending update info to other clients error logged in next line");
             logger.error("DBH", e);
             insertMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
         }
@@ -1619,19 +1804,30 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
     //LISTENER FOR MESSAGES FROM DatabaseHelper
     @Override
     public void onRowInserted(String tableName, String date, String who, long timestamp) {
+        logger.info("onRowInserted: received database helper message: row inserted into table '{}' and date '{}'", tableName, date);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.insert"), tableName, who, elapsedSeconds));
-        infoTextField.addMouseListener(aggiornaOnClickAdapter);
+        Date d = ViaggiUtils.checkAndCreateDate(date, "-", true);
+        if(currentDate.equals(d)) {
+            infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.insert"), tableName, who, elapsedSeconds));
+            infoTextField.addMouseListener(aggiornaOnClickAdapter);
+        }
     }
 
     @Override
     public void onRowUpdated(String tableName, String date, String who, long timestamp) {
+        logger.info("onRowUpdated: received database helper message: row updated into table '{}' and date '{}'", tableName, date);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.update"), tableName, who, elapsedSeconds));
-        infoTextField.addMouseListener(aggiornaOnClickAdapter);    }
+        Date d = ViaggiUtils.checkAndCreateDate(date, "-", true);
+        if (currentDate.equals(d)) {
+            infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.update"), tableName, who, elapsedSeconds));
+            infoTextField.addMouseListener(aggiornaOnClickAdapter);
+        }
+    }
+
 
     @Override
     public void onDateAdded(String date, String who, long timestamp) {
+        logger.info("onDateAdded: received database helper message: new date added '{}'", date);
         Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
         infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.day.add"), who, elapsedSeconds));
@@ -1646,24 +1842,27 @@ public class MainFrame extends JFrame implements TableModelListener, ReloadCallb
 
     @Override
     public void onDateRemoved(String date, String who, long timestamp) {
+        logger.info("onDateRemoved: received database helper message: date removed '{}'", date);
         Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
         if(date1.equals(currentDate)) {
             EventQueue.invokeLater(() -> {
                 Msg.warn(MainFrame.this, MessageFormat.format(strings.getString("database.helper.day.deleted"), who));
                 try {
-                    lastDateFromDb = dbs.getDataAggiornamento();
+                    logger.info("onDateRemoved: retrieving new last date from database...");
+                    Date lastDateFromDb = dbs.getDataAggiornamento();
                     loadDate(lastDateFromDb, RELOAD_RESETCONNECTION);
                 } catch (SQLException e) {
+                    logger.warn("onDateRemoved: retrieving new last date from database error logged in next line");
                     logDatabaseError(e);
                 }
             });
         }
     }
 
-    /*public MessageJLabel getMessageField() {
+
+    public MessageJLabel getMessageField() {
         return infoTextField;
     }
-*/
     class ColumnChangeListener implements TableColumnModelListener {
         JTable sourceTable;
         JTable targetTable;

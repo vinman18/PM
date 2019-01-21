@@ -19,6 +19,7 @@ import it.vin.dev.menzione.main_frame.OrdiniTableModel;
 import it.vin.dev.menzione.frame.ViaggiJTable;
 import it.vin.dev.menzione.frame.ViaggiTableModel;
 
+@SuppressWarnings("Duplicates")
 public class PdfReportBuilder {
 
     private ViaggiJTable nord;
@@ -67,7 +68,7 @@ public class PdfReportBuilder {
         PdfPTable table = new PdfPTable(new float[]{10f, 2f});
         table.setWidthPercentage(100);
 
-        PdfPCell cell = new PdfPCell(new Phrase("GestioneViaggi - REPORT", font));
+        PdfPCell cell = new PdfPCell(new Phrase("GestioneViaggi - REPORT LOCAL", font));
         PdfPCell cell2 = new PdfPCell(new Phrase(data, font2));
 
         cell.setVerticalAlignment(Element.ALIGN_CENTER);

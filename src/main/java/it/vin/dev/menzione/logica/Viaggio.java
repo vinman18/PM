@@ -2,6 +2,7 @@ package it.vin.dev.menzione.logica;
 
 import java.io.Serializable;
 import java.sql.Date;
+import java.util.Objects;
 
 public class Viaggio implements Serializable {
 
@@ -20,13 +21,6 @@ public class Viaggio implements Serializable {
     private int litriB;
     private boolean selezionato;
     private boolean pinned;
-
-
-	@Override
-	public String toString() {
-		return "Viaggio [id=" + id + ", camion=" + camion + ", autista=" + autista + ", posizione=" + posizione
-				+ ", note=" + note + ", data=" + data + ", litriB=" + litriB + ", selezionato=" + selezionato + "]";
-	}
 
 	public Viaggio(Camion camion, String autista, String posizione, Date data, long id) {
 		this.camion = camion;
@@ -47,6 +41,7 @@ public class Viaggio implements Serializable {
 		this.note = "";
 		this.setSelezionato(false);
 		this.id = id;
+		this.litriB = 0;
 	}
 	
 	public Viaggio(){
@@ -57,6 +52,7 @@ public class Viaggio implements Serializable {
 		this.note = "";
 		this.setSelezionato(false);
 		this.id = -1;
+		this.litriB = 0;
 	}
 
 	public long getId() {
@@ -124,50 +120,6 @@ public class Viaggio implements Serializable {
 		this.litriB = litriB;
 	}
 
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Viaggio other = (Viaggio) obj;
-		if (autista == null) {
-			if (other.autista != null)
-				return false;
-		} else if (!autista.equals(other.autista))
-			return false;
-		if (camion == null) {
-			if (other.camion != null)
-				return false;
-		} else if (!camion.equals(other.camion))
-			return false;
-		if (data == null) {
-			if (other.data != null)
-				return false;
-		} else if (!data.equals(other.data))
-			return false;
-		if (id != other.id)
-			return false;
-		if (litriB != other.litriB)
-			return false;
-		if (note == null) {
-			if (other.note != null)
-				return false;
-		} else if (!note.equals(other.note))
-			return false;
-		if (posizione == null) {
-			if (other.posizione != null)
-				return false;
-		} else if (!posizione.equals(other.posizione))
-			return false;
-		if (selezionato != other.selezionato)
-			return false;
-		return true;
-	}
-
     public boolean isPinned() {
         return pinned;
     }
@@ -175,4 +127,40 @@ public class Viaggio implements Serializable {
     public void setPinned(boolean pinned) {
         this.pinned = pinned;
     }
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Viaggio viaggio = (Viaggio) o;
+		return id == viaggio.id &&
+				litriB == viaggio.litriB &&
+				selezionato == viaggio.selezionato &&
+				pinned == viaggio.pinned &&
+				Objects.equals(camion, viaggio.camion) &&
+				Objects.equals(autista, viaggio.autista) &&
+				Objects.equals(posizione, viaggio.posizione) &&
+				Objects.equals(note, viaggio.note) &&
+				Objects.equals(data, viaggio.data);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id, camion, autista, posizione, note, data, litriB, selezionato, pinned);
+	}
+
+	@Override
+	public String toString() {
+		return "Viaggio{" +
+				"id=" + id +
+				", camion=" + camion +
+				", autista='" + autista + '\'' +
+				", posizione='" + posizione + '\'' +
+				", note='" + note + '\'' +
+				", data=" + data +
+				", litriB=" + litriB +
+				", selezionato=" + selezionato +
+				", pinned=" + pinned +
+				'}';
+	}
 }

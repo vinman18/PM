@@ -15,12 +15,15 @@ import it.vin.dev.menzione.events.CamionCacheUpdated;
 import it.vin.dev.menzione.events.ViaggiEventBus;
 import it.vin.dev.menzione.logica.Camion;
 import it.vin.dev.menzione.logica.CamionListCache;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import static it.vin.dev.menzione.Consts.*;
 
 public class ViaggiJTable extends JTable {
     private int type;
 
+    private Logger logger = LogManager.getLogger(this.getClass());
     public int getType() {
         return type;
     }
@@ -66,6 +69,7 @@ public class ViaggiJTable extends JTable {
 
     @Override
     public Component prepareRenderer(TableCellRenderer renderer, int row, int col) {
+//        logger.entry(renderer, row, col);
         Component c = super.prepareRenderer(renderer, row, col);
         int selCol = 0;
         if(type == VIAGGI_TM_TYPE_NORD){

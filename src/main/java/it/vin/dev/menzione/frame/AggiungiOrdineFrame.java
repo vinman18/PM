@@ -8,9 +8,7 @@ import javax.swing.border.EmptyBorder;
 
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.DatabaseService;
-import it.vin.dev.menzione.logica.Nota;
 import it.vin.dev.menzione.logica.Ordine;
-import it.vin.dev.menzione.main_frame.ReloadCallback;
 import it.vin.dev.menzione.workers.OrdiniUpdateWorker;
 import it.vin.dev.menzione.workers.UpdateWorkerAdapter;
 import it.vin.dev.menzione.workers.UpdateWorkerListener;
@@ -40,7 +38,7 @@ public class AggiungiOrdineFrame extends JFrame {
      * Create the frame.
      * @throws SQLException
      */
-    public AggiungiOrdineFrame(ReloadCallback source, String type, Date dataOrdine) throws SQLException {
+    public AggiungiOrdineFrame(String type, Date dataOrdine) throws SQLException {
         logger = LogManager.getLogger(this.getClass());
         this.dbs = DatabaseService.create();
 
@@ -130,15 +128,8 @@ public class AggiungiOrdineFrame extends JFrame {
 
                             @Override
                             public void onInsert(Ordine inserted, long newId) {
-                                try {
-                                    source.reloadOrdiniModel(dataOrdine);
-                                    if(resultListener != null) {
-                                        resultListener.onInsert(inserted, newId);
-                                    }
-                                } catch (SQLException e) {
-                                    if(resultListener != null) {
-                                        onError(e);
-                                    }
+                                if(resultListener != null) {
+                                    resultListener.onInsert(inserted, newId);
                                 }
                                 dispose();
                             }

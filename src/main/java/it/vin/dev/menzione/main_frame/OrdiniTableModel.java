@@ -8,13 +8,33 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class OrdiniTableModel extends AbstractTableModel {
+	private static final String[] COLS = new String[]{"", "Data", "Cliente", "Note"};
 
 	private static final long serialVersionUID = 3190609378048624032L;
 	private Vector<Ordine> ordini;
-	private String[] colonne = {"", "Data", "Cliente", "Note"};
+	private String[] colonne = COLS;
 	private Logger log = LogManager.getLogger(this.getClass());
-	
-	public Vector<Ordine> getData(){
+
+    public static String getOrdineValueFromColumnIndex(Ordine ordine, int col) {
+        switch (col) {
+            case 0:
+                return ordine.getSelezionato() ? "Selezionato" : "Deselezionato";
+            case 1:
+                return ordine.getData();
+            case 2:
+                return ordine.getCliente();
+            case 3:
+                return ordine.getNote();
+            default:
+                return null;
+        }
+    }
+
+	public static String getOrdineColumnNameFromIndex(int col) {
+    	return COLS[col];
+	}
+
+    public Vector<Ordine> getData(){
 		return ordini;
 	}
 	

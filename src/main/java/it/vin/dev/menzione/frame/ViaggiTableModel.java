@@ -1,7 +1,10 @@
 package it.vin.dev.menzione.frame;
 
 import java.sql.Date;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Vector;
+import javax.swing.event.TableModelListener;
 import javax.swing.table.AbstractTableModel;
 
 import it.vin.dev.menzione.Consts;
@@ -11,15 +14,45 @@ import org.apache.logging.log4j.Logger;
 
 public class ViaggiTableModel extends AbstractTableModel {
 
+	private static final String[] COL_NORD = new String[]{"Targa", "Caratteristiche", "Autista", "Note", ""};
+	private static final String[] COL_SUD = new String[]{"Targa", "Caratteristiche", "Autista", "Note", "Litri", ""};
 
-	private static final long serialVersionUID = -8602306676258552807L;
+
 	protected Vector<Viaggio> viaggi;
 	private String[] colonne;
 	protected int type;
 	private Date currentDate;
-	private Logger log;
 
-	//protected List<Camion> camions; //TODO: change camion list with a string (of targhe) list?
+	public static Object getViaggioValueByColumnIndex(Viaggio v, int col) {
+		switch (col) {
+			case 0:
+				return v.getCamion().getTarga();
+			case 1:
+				return v.getCamion().getCaratteristiche();
+			case 2:
+				return v.getAutista();
+			case 3:
+				return v.getNote();
+			case 4:
+				return Viaggio.NORD.equals(v.getPosizione())
+						? v.isSelezionato()
+						: v.getLitriB();
+			case 5:
+				return v.isSelezionato();
+			default:
+				return null;
+		}
+	}
+
+	public static String getViaggioColumnNameByIndex(ViaggiTableModel model, int col) {
+		String[] colums = model.getType() == Consts.VIAGGI_TM_TYPE_NORD ? COL_NORD : COL_SUD;
+
+		return colums[col];
+	}
+
+	public static String getTableModelName(ViaggiTableModel model) {
+	    return "Viaggi " + (model.getType() == Consts.VIAGGI_TM_TYPE_NORD ? "NORD" : "SUD");
+    }
 
 	public Vector<Viaggio> getData(){
 		return viaggi;
@@ -28,11 +61,10 @@ public class ViaggiTableModel extends AbstractTableModel {
 	public ViaggiTableModel(int type) {
 		this.type = type;
 		viaggi = new Vector<>();
-		log = LogManager.getLogger(this.getClass());
 		if(type == Consts.VIAGGI_TM_TYPE_NORD){
-			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", ""};
+			colonne = COL_NORD;
 		}else{
-			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", "Litri", ""};
+			colonne = COL_SUD;
 		}
 	}
 
@@ -46,8 +78,12 @@ public class ViaggiTableModel extends AbstractTableModel {
 		fireTableDataChanged();
 	}
 
+    @Override
+    public void addTableModelListener(TableModelListener l) {
+        super.addTableModelListener(l);
+    }
 
-	public Date getCurrentDate() {
+    public Date getCurrentDate() {
 		return currentDate;
 	}
 
@@ -119,13 +155,10 @@ public class ViaggiTableModel extends AbstractTableModel {
 				viaggi.elementAt(row).setCamion(c);
 			} else if(col == 2){
 				viaggi.elementAt(row).setAutista(value.toString());
-				//log.info(viaggi.elementAt(row).getAutista());
 			} else if(col == 3){
 				viaggi.elementAt(row).setNote(value.toString());
-				//log.info(viaggi.elementAt(row).getNote());
 			} else if(col == 4){
 				viaggi.elementAt(row).setSelezionato(Boolean.parseBoolean(value.toString()));
-				//log.info(""+viaggi.elementAt(row).isSelezionato());
 			}
 		}else{
 			if(col == 0){
@@ -133,16 +166,12 @@ public class ViaggiTableModel extends AbstractTableModel {
 				viaggi.elementAt(row).setCamion(c);
 			} else if(col == 2){
 				viaggi.elementAt(row).setAutista(value.toString());
-				//log.info(viaggi.elementAt(row).getAutista());
 			} else if(col == 3){
 				viaggi.elementAt(row).setNote(value.toString());
-				//log.info(viaggi.elementAt(row).getNote());
 			} else if(col == 4){
 				viaggi.elementAt(row).setLitriB(Integer.parseInt(value.toString()));
-				//log.info(""+viaggi.elementAt(row).getLitriB());
 			} else if(col == 5){
 				viaggi.elementAt(row).setSelezionato(Boolean.parseBoolean(value.toString()));
-				//log.info(""+viaggi.elementAt(row).isSelezionato());
 			}
 		}
 		fireTableCellUpdated(row, col);
@@ -172,10 +201,10 @@ public class ViaggiTableModel extends AbstractTableModel {
 			nuovo.setPosizione(posizione);
 			nuovo.setData(currentDate);
 			viaggi.addElement(nuovo);
-			fireTableRowsInserted(getRowCount() , getRowCount());
+			fireTableRowsInserted(getRowCount() - 1, getRowCount() - 1);
 		}else{
 			viaggi.addElement(v);
-			fireTableRowsInserted(getRowCount() , getRowCount());
+			fireTableRowsInserted(getRowCount() - 1, getRowCount() - 1);
 		}
 	}
 

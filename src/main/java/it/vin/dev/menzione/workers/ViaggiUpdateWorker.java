@@ -17,7 +17,7 @@ public class ViaggiUpdateWorker extends SwingWorker<Viaggio, Void> {
     private Viaggio v;
     private DatabaseService dbs;
     private int col = -1;
-    private Logger logger;
+    private Logger logger = LogManager.getLogger(ViaggiUpdateWorker.class);
     private UpdateWorkerListener<Viaggio> listener;
     private UpdateType type;
 
@@ -26,7 +26,6 @@ public class ViaggiUpdateWorker extends SwingWorker<Viaggio, Void> {
     public ViaggiUpdateWorker(DatabaseService dbs) {
         super();
         this.dbs = dbs;
-        logger = LogManager.getLogger(this.getClass());
     }
 
     public static ViaggiUpdateWorker connect(DatabaseService dbs) {

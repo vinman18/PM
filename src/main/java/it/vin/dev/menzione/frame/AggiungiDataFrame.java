@@ -19,12 +19,12 @@ import javax.swing.table.TableColumn;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
+import it.vin.dev.menzione.events.NewDateAddedEvent;
+import it.vin.dev.menzione.events.ViaggiEventBus;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.main_frame.CustomDateTextField;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.DatabaseService;
-import it.vin.dev.menzione.main_frame.MainFrame;
-import it.vin.dev.menzione.main_frame.ReloadCallback;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,35 +37,135 @@ import java.awt.event.ActionEvent;
 public class AggiungiDataFrame extends JFrame implements TableModelListener {
     private final static boolean DEBUG_FRAME = ViaggiFrameUtils.DEBUG_FRAME;
 
+    private static final String CMD_MOVE_NORD_TO_SUD = "cmd_move_nord_to_sud";
+    private static final String CMD_MOVE_SUD_TO_NORD = "cmd_move_sud_to_nord";
+    private static final String CMD_NORD_TABLE = "cmd_nord_table";
+    private static final String CMD_SUD_TABLE = "cmd_sud_table";
+
     private JPanel contentPane;
     private JTable viaggiNordTable;
     private JTable viaggiSudTable;
-    private ViaggiNuoviTableModel nordTM;
-    private ViaggiNuoviTableModel sudTM;
+    //    private ViaggiNuoviTableModel nordTM;
+//    private ViaggiNuoviTableModel sudTM;
     private Date lastDate;
     private DatabaseService dbu;
     private JFormattedTextField frmtdtxtfldData;
     private JComboBox<String> camionComboBox;
     private Logger logger;
-    private ReloadCallback source;
     private Nota fermiToDB;
     private Nota nonAssToDB;
+    private List<Camion> camions;
+
     private Vector<Ordine> ordiniToDB;
     private Vector<Viaggio> toDB;
 
+    private final KeyListener dateFieldKeyListener = new KeyListener() {
+        @Override
+        public void keyPressed(KeyEvent e) {
+            String text;
+            int code = e.getKeyCode();
+            Date d = null;
 
-    private List<Camion> camions;
+            if(code == KeyEvent.VK_ENTER || code == KeyEvent.VK_TAB){
+                text = frmtdtxtfldData.getText();
+                try{
+                    d = ViaggiUtils.checkAndCreateDate(text, "/", false);
+                    viaggiNordTable.requestFocusInWindow();
+                    viaggiNordTable.editCellAt(0, 0);
+                }catch(NumberFormatException ex){
+                    e.getComponent().setBackground(Color.RED);
+                }
+
+                if(d == null) {
+                    e.getComponent().setBackground(Color.RED);
+                }
+            }else{
+                if(e.getComponent().getBackground() == Color.RED){
+                    e.getComponent().setBackground(Color.WHITE);
+                }
+            }
+        }
+        public void keyReleased (KeyEvent arg0) {}
+        public void keyTyped (KeyEvent arg0) {}
+    };
+
+    private ActionListener moveRowActionListener = new ActionListener() {
+        public void actionPerformed(ActionEvent arg0) {
+            JTable srcTable;
+            JTable dstTable;
+
+            if(arg0.getActionCommand().equals(CMD_MOVE_NORD_TO_SUD)) {
+                srcTable = viaggiNordTable;
+                dstTable = viaggiSudTable;
+            } else {
+                srcTable = viaggiSudTable;
+                dstTable = viaggiNordTable;
+            }
+
+            int selectedRow = srcTable.getSelectedRow();
+            if(srcTable.isEditing()){
+                srcTable.getCellEditor().cancelCellEditing();
+            }
+
+            if(selectedRow>=0 && selectedRow < srcTable.getRowCount()){
+                Viaggio tmp = ((ViaggiNuoviTableModel) srcTable.getModel()).removeRow(selectedRow);
+                switch (tmp.getPosizione()) {
+                    case Viaggio.SUD:
+                        tmp.setPosizione(Viaggio.NORD);
+                        break;
+                    case Viaggio.NORD:
+                        tmp.setPosizione(Viaggio.SUD);
+                        break;
+                }
+                ((ViaggiNuoviTableModel) dstTable.getModel()).addRow(tmp);
+                ViaggiFrameUtils.selectTableCell(srcTable, selectedRow, srcTable.getSelectedColumn());
+            }
+        }
+    };
+
+    private final ActionListener addRowAction = new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+            JTable table;
+
+            if(e.getActionCommand().equals(CMD_NORD_TABLE)) {
+                table = viaggiNordTable;
+            } else {
+                table = viaggiSudTable;
+            }
+
+            ((ViaggiNuoviTableModel) table.getModel()).addRow(null);
+        }
+    };
+
+    private final ActionListener removeRowAction = new ActionListener() {
+        public void actionPerformed(ActionEvent e) {
+            JTable table;
+
+            if(e.getActionCommand().equals(CMD_NORD_TABLE)) {
+                table = viaggiNordTable;
+            } else {
+                table = viaggiSudTable;
+            }
+
+            int row = table.getSelectedRow();
+            if(row >= 0) {
+                ((ViaggiNuoviTableModel) table.getModel()).removeRow(row);
+                ViaggiFrameUtils.selectTableCell(table, row, table.getSelectedRow());
+            }
+        }
+    };
+
     /**
      * Create the frame.
      */
-    public AggiungiDataFrame(ReloadCallback source) {
+    public AggiungiDataFrame() {
         try {
             dbu = DatabaseService.create();
         } catch (SQLException e3) {
             e3.printStackTrace();
         }
 
-        this.source = source;
+//        this.source = source;
         this.toDB = new Vector<>();
 
         logger = LogManager.getLogger(AggiungiDataFrame.class);
@@ -87,35 +187,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
         frmtdtxtfldData = new CustomDateTextField();
         frmtdtxtfldData.setFocusTraversalKeysEnabled(false);
-        frmtdtxtfldData.addKeyListener(new KeyListener() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                String text;
-                int code = e.getKeyCode();
-                Date d = null;
-
-                if(code == KeyEvent.VK_ENTER || code == KeyEvent.VK_TAB){
-                    text = frmtdtxtfldData.getText();
-                    try{
-                        d = ViaggiUtils.checkAndCreateDate(text, "/", false);
-                        viaggiNordTable.requestFocusInWindow();
-                        viaggiNordTable.editCellAt(0, 0);
-                    }catch(NumberFormatException ex){
-                        e.getComponent().setBackground(Color.RED);
-                    }
-
-                    if(d == null) {
-                        e.getComponent().setBackground(Color.RED);
-                    }
-                }else{
-                    if(e.getComponent().getBackground() == Color.RED){
-                        e.getComponent().setBackground(Color.WHITE);
-                    }
-                }
-            }
-            public void keyReleased (KeyEvent arg0) {}
-            public void keyTyped (KeyEvent arg0) {}
-        });
+        frmtdtxtfldData.addKeyListener(dateFieldKeyListener);
 
         headerPanel.add(frmtdtxtfldData);
 
@@ -125,22 +197,9 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
         JPanel panel_6 = new JPanel(new FlowLayout(FlowLayout.TRAILING, 0, 0));
 
-        JButton nordAddButton = new JButton("+");
-        nordAddButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                ViaggiNuoviTableModel tm = (ViaggiNuoviTableModel) viaggiNordTable.getModel();
-                tm.addRow(null);
-            }
-        });
+        JButton nordAddButton = ViaggiFrameUtils.newButton("+", addRowAction, CMD_NORD_TABLE);
+        JButton NordRemoveButton = ViaggiFrameUtils.newButton("-", removeRowAction, CMD_NORD_TABLE);
 
-        JButton NordRemoveButton = new JButton("-");
-        NordRemoveButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                ViaggiNuoviTableModel tm = (ViaggiNuoviTableModel) viaggiNordTable.getModel();
-                int row = viaggiNordTable.getSelectedRow();
-                tm.removeRow(row);
-            }
-        });
         panel_6.add(NordRemoveButton);
         panel_6.add(nordAddButton);
         panel_4.add(panel_6, BorderLayout.NORTH);
@@ -162,37 +221,11 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
         JPanel panel_1 = new JPanel(new GridLayout(2, 1, 10, 60));
 
-        JButton button = new JButton(">");
-        button.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent arg0) {
-                int selectedRow = viaggiNordTable.getSelectedRow();
-                if(viaggiNordTable.isEditing()){
-                    viaggiNordTable.getCellEditor().cancelCellEditing();
-                }
-                if(selectedRow>=0){
-                    Viaggio tmp = nordTM.removeRow(selectedRow);
-                    tmp.setPosizione(Viaggio.SUD);
-                    sudTM.addRow(tmp);
-                }
-            }
-        });
-        panel_1.add(button);
+        JButton moveLeftButton = ViaggiFrameUtils.newButton(">", moveRowActionListener, CMD_MOVE_NORD_TO_SUD);
+        panel_1.add(moveLeftButton);
 
-        JButton button_1 = new JButton("<");
-        button_1.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                int selectedRow = viaggiSudTable.getSelectedRow();
-                if(viaggiSudTable.isEditing()){
-                    viaggiSudTable.getCellEditor().cancelCellEditing();
-                }
-                if(selectedRow>=0){
-                    Viaggio tmp = sudTM.removeRow(selectedRow);
-                    tmp.setPosizione(Viaggio.NORD);
-                    nordTM.addRow(tmp);
-                }
-            }
-        });
-        panel_1.add(button_1);
+        JButton moveRightButton = ViaggiFrameUtils.newButton("<", moveRowActionListener, CMD_MOVE_SUD_TO_NORD);
+        panel_1.add(moveRightButton);
 
         centerPanel.add(panel_1, new GridBagConstraints(
                 1, 0, 1, 1, 0.1, 0.1,
@@ -203,22 +236,9 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
         JPanel panel_7 = new JPanel(new FlowLayout(FlowLayout.TRAILING, 0,0));
 
-        JButton SudAddButton = new JButton("+");
-        SudAddButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                ViaggiNuoviTableModel tm = (ViaggiNuoviTableModel) viaggiSudTable.getModel();
-                tm.addRow(null);
-            }
-        });
+        JButton SudAddButton = ViaggiFrameUtils.newButton("+", addRowAction, CMD_SUD_TABLE);
+        JButton SudRemoveButton = ViaggiFrameUtils.newButton("-", removeRowAction, CMD_SUD_TABLE);
 
-        JButton SudRemoveButton = new JButton("-");
-        SudRemoveButton.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                ViaggiNuoviTableModel tm = (ViaggiNuoviTableModel) viaggiSudTable.getModel();
-                int row = viaggiSudTable.getSelectedRow();
-                tm.removeRow(row);
-            }
-        });
         panel_7.add(SudRemoveButton);
         panel_7.add(SudAddButton);
         panel_5.add(panel_7, BorderLayout.NORTH);
@@ -247,13 +267,10 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                     salva();
                 }
             }
-
         });
+
         panel_8.add(SalvaBtn);
         contentPane.add(panel_8, BorderLayout.SOUTH);
-
-        viaggiNordTable.getModel().addTableModelListener(this);
-        viaggiSudTable.getModel().addTableModelListener(this);
 
         try {
             lastDate = dbu.getDataAggiornamento();
@@ -339,7 +356,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                             sudOK = true;
                         }
 
-                        int sum = nordTM.getData().size() + sudTM.getData().size();
+                        int sum = tmNord.getData().size() + tmSud.getData().size();
 
                         //Aggiungo la data agli ordini
                         for(Ordine o : ordiniToDB) {
@@ -386,10 +403,12 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         //Creo i camion
         camions = dbu.getCamion();
 
-        nordTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_NORD);
-        sudTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_SUD);
+        ViaggiNuoviTableModel nordTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_NORD);
+        ViaggiNuoviTableModel sudTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_SUD);
         viaggiNordTable.setModel(nordTM);
         viaggiSudTable.setModel(sudTM);
+        viaggiNordTable.getModel().addTableModelListener(this);
+        viaggiSudTable.getModel().addTableModelListener(this);
 
         //Creo i viaggi
         Vector<Viaggio> nordViaggiTMP = dbu.getViaggiBy(Viaggio.NORD, lastDate);
@@ -409,7 +428,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             if(vv.isPinned()) {
                 vv.setPosizione(v.getPosizione());
                 vv.setNote(v.getNote());
-                vv.setLitriB(v.getLitriB());
+                //vv.setLitriB(v.getLitriB());
                 vv.setSelezionato(v.isSelezionato());
                 toDB.add(vv);
                 continue;
@@ -436,7 +455,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             if(vv.isPinned()) {
                 vv.setPosizione(v.getPosizione());
                 vv.setNote(v.getNote());
-                vv.setLitriB(v.getLitriB());
+                //vv.setLitriB(v.getLitriB());
                 vv.setSelezionato(v.isSelezionato());
                 toDB.add(vv);
                 continue;
@@ -578,12 +597,12 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                 if(col==1){
                     Camion c = tm.getElementAt(row).getCamion();
                     if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
-                        if(sudTM.existsCamion(c) > 0) {
-                            sudTM.replaceCaratt(c.getTarga(), c.getCaratteristiche());
+                        if(((ViaggiNuoviTableModel) viaggiSudTable.getModel()).existsCamion(c) > 0) {
+                            ((ViaggiNuoviTableModel) viaggiSudTable.getModel()).replaceCaratt(c.getTarga(), c.getCaratteristiche());
                         }
                     }else if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
-                        if(nordTM.existsCamion(c) > 0) {
-                            nordTM.replaceCaratt(c.getTarga(), c.getCaratteristiche());
+                        if(((ViaggiNuoviTableModel) viaggiNordTable.getModel()).existsCamion(c) > 0) {
+                            ((ViaggiNuoviTableModel) viaggiNordTable.getModel()).replaceCaratt(c.getTarga(), c.getCaratteristiche());
                         }
                     }
                 }
@@ -591,17 +610,17 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         } else if(e.getType() == TableModelEvent.INSERT) {
             if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
                 viaggiNordTable.requestFocus();
-                viaggiNordTable.changeSelection(row-1, 0, false, false);
+                viaggiNordTable.changeSelection(row, 0, false, false);
                 String t = tm.getElementAt(viaggiNordTable.getSelectedRow()).getCamion().getTarga();
                 if(t.trim().isEmpty()) {
-                    viaggiNordTable.editCellAt(row-1, 0);
+                    viaggiNordTable.editCellAt(row, 0);
                 }
             } else {
                 viaggiSudTable.requestFocus();
-                viaggiSudTable.changeSelection(row-1, 0, false, false);
+                viaggiSudTable.changeSelection(row, 0, false, false);
                 String t = tm.getElementAt(viaggiSudTable.getSelectedRow()).getCamion().getTarga();
                 if(t.trim().isEmpty()) {
-                    viaggiSudTable.editCellAt(row-1, 0);
+                    viaggiSudTable.editCellAt(row, 0);
                 }
             }
         }
@@ -620,7 +639,8 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             if(result){
                 Msg.info(this, "Data aggiunta correttamente!");
                 DatabaseHelperChannel.getInstance().notifyDateAdded(newLastDate.toString());
-                source.loadDate(newLastDate, MainFrame.RELOAD_RESETCONNECTION);
+                //source.loadDate(newLastDate, MainFrame.RELOAD_RESETCONNECTION);
+                ViaggiEventBus.getInstance().post(new NewDateAddedEvent(newLastDate, NewDateAddedEvent.NewDateEventSource.ADD_DATE_FRAME));
                 dbu.closeConnection();
                 dispose();
             } else {

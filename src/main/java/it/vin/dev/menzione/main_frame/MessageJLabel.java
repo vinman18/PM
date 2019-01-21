@@ -4,7 +4,6 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.MouseListener;
-import java.net.URL;
 
 public class MessageJLabel extends JLabel {
 
@@ -15,9 +14,9 @@ public class MessageJLabel extends JLabel {
 
     public MessageJLabel() {
         super();
-        Border padding = new EmptyBorder(3,3,3,3);
-        Border border = new SoftBevelBorder(SoftBevelBorder.LOWERED);
-        this.setBorder(new CompoundBorder(border, padding));
+        Border padding = BorderFactory.createEmptyBorder(3,3,3,3);
+        Border border = BorderFactory.createSoftBevelBorder(SoftBevelBorder.LOWERED);
+        this.setBorder(BorderFactory.createCompoundBorder(border, padding));
         this.setFont(getFont().deriveFont(12f));
         errorIcon = new ImageIcon(this.getClass().getResource("/Icons/cancel16.png"));
         infoIcon = new ImageIcon(this.getClass().getResource("/Icons/info16.png"));

@@ -56,4 +56,14 @@ public class ViaggiFrameUtils {
         return button;
     }
 
+    public static void selectTableCell(JTable table, int row, int col) {
+        int rowCount = table.getRowCount();
+        if(row >= rowCount) { //must be 0 <= row <= rowCount-1
+            row = rowCount - 1; //if not we select the last row
+        }
+
+        table.changeSelection(row, col, false, false);
+        //table.editCellAt(row, col);
+        table.requestFocus();
+    }
 }

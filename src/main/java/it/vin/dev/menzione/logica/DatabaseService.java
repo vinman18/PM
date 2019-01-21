@@ -18,15 +18,15 @@ public class DatabaseService {
 	private Connection conn;
 
 	public static DatabaseService create() throws SQLException{
-		DatabaseService dbu;
+		DatabaseService dbs;
 		Connection conn = DatabaseService.createConnection();
-		dbu = new DatabaseService(conn);
+		dbs = new DatabaseService(conn);
 
-		if(dbu.getDbVersion() != Consts.DBVERSION) {
+		if(dbs.getDbVersion() != Consts.DBVERSION) {
             throw new SQLException("Versione del database non compatibile con questa versione del programma");
         }
 
-		return dbu;
+		return dbs;
 	}
 
 	private DatabaseService(Connection conn) {

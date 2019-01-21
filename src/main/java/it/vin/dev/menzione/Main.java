@@ -27,19 +27,25 @@ import org.apache.logging.log4j.Logger;
 
 public class Main {
 
-    private static Logger logger = LogManager.getLogger(Main.class);
+    static {
+        //http://logging.apache.org/log4j/2.x/manual/layouts.html#enable-jansi
+        //https://stackoverflow.com/a/38860875
+        System.setProperty("log4j2.skipJansi", "false");
+    }
+
+    private static VerboseLogger logger = VerboseLogger.create(Main.class);
     public Main() {
 
     }
 
     public static void main(String[] args) {
-        logger.info("Avvio applicazione...");
+        logger.verbose("Avvio applicazione...");
 
         System.out.println("--Ricorda di aggiornare dbversion (sia sull'aplicazione sia sul db)"
                 + "se fai modifiche al database!!--");
 
         Thread.setDefaultUncaughtExceptionHandler(
-                (thread, exception) -> logger.fatal(exception.getMessage(), exception)
+                (thread, exception) -> {logger.fatal(exception.getMessage(), exception); System.exit(1);}
         );
 
         try {
@@ -90,7 +96,7 @@ public class Main {
                     logger.info("Loading MainFrame...");
                     MainFrame frame = new MainFrame();
 
-/*                    DatabaseClient client = null;
+                    DatabaseClient client = null;
                     try {
                         logger.info("Connection with remote DatabaseHelper server on ip " + conf.getDbhelperHost());
                         String id = UUID.randomUUID().toString();
@@ -111,7 +117,7 @@ public class Main {
 
                     if(client != null) {
                         client.setListener(frame);
-                    }*/
+                    }
 
                     frame.pack();
                     frame.setVisible(true);
