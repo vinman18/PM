@@ -155,6 +155,9 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
     private Nota nonAssNota;
 
 
+    private TableRowSorter<TableModel> viaggiNordPinTableSorter;
+    private TableRowSorter<TableModel> viaggiSudPinTableSorter;
+
     private Map<JTable, TableColumnModelListener> tableColumnModelListenerMap;
 
     private TableModelListener viaggiPinnedTableListener = new TableModelListener() {
@@ -172,16 +175,31 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
                 return;
             }
 
-            Viaggio v = model.getElementAt(row);
+            Viaggio v = null;
 
             switch (type) {
                 case TableModelEvent.INSERT:
+                    v = model.getElementAt(row);
+                    logger.info("ViaggiPinnedTableListener: inserted new row in table Pinned {}", ViaggiTableModel.getTableModelName(model));
+                    logger.verbose("Element before insert: {}", v.toString());
                     v.setPinned(true);
                     col = Viaggio.COL_PINNED;
                     break;
                 case TableModelEvent.DELETE:
+                    v = ((ViaggiPinTableModel) model).getRemovedRow(row);
+                    logger.info("ViaggiPinnedTableListener: removed row in table Pinned {}", ViaggiTableModel.getTableModelName(model));
+                    logger.verbose("Element before delete: {}", v.toString());
                     v.setPinned(false);
                     col = Viaggio.COL_PINNED;
+                    break;
+                case TableModelEvent.UPDATE:
+                    v = model.getElementAt(row);
+                    logger.info("ViaggiPinnedTableListener: updated col '{}' of row {} in table Pinned {}",
+                            ViaggiTableModel.getViaggioColumnNameByIndex(model, col),
+                            row,
+                            ViaggiTableModel.getTableModelName(model)
+                    );
+                    logger.verbose("ViaggiPinnedTableListener: new value: '{}'", ViaggiTableModel.getViaggioValueByColumnIndex(v, col));
                     break;
             }
 
@@ -687,10 +705,14 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
                     return;
             }
 
-            int selectedRow = pinTable.getSelectedRow();
+            int viewSelectedRow = pinTable.getSelectedRow();
+            int modelSelectedRow = pinTable.convertRowIndexToModel(viewSelectedRow);
             int selectedColumn = pinTable.getSelectedColumn();
 
-            if(selectedRow < 0) {
+            logger.info("viaggiUnPinAction: moving row {} from table Pin {} to table {}", modelSelectedRow, ViaggiTableModel.getTableModelName(pinTableModel), ViaggiTableModel.getTableModelName(tableModel));
+
+            if(modelSelectedRow < 0) {
+                logger.info("viaggiUnPinAction: no row selected");
                 return;
             }
 
@@ -698,7 +720,8 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
                 pinTable.getCellEditor().cancelCellEditing();
             }
 
-            Viaggio v = pinTableModel.removeRow(selectedRow);
+            Viaggio v = pinTableModel.removeRow(modelSelectedRow);
+            logger.verbose("viaggiUnPinAction: element removed from table {}: {}", ViaggiTableModel.getTableModelName(pinTableModel), v.toString());
             tableModel.addRow(v);
 
             ViaggiFrameUtils.selectTableCell(pinTable, viewSelectedRow, selectedColumn);
@@ -1426,12 +1449,14 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         viaggiSudTable.getModel().addTableModelListener(this);
         viaggiSudTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
 
-        viaggiNordPinTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD));
+        logger.verbose("reloadTableModel: creating Viaggi NORD Pin table model...");
+        viaggiNordPinTable.setModel(new ViaggiPinTableModel(Consts.VIAGGI_TM_TYPE_NORD));
         viaggiNordPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
         ViaggiTableModel viaggiNordPinTableModel = (ViaggiTableModel) viaggiNordPinTable.getModel();
         viaggiNordPinTableModel.addTableModelListener(viaggiPinnedTableListener);
 
-        viaggiSudPinTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD));
+        logger.verbose("reloadTableModel: creating Viaggi SUD Pin table model...");
+        viaggiSudPinTable.setModel(new ViaggiPinTableModel(Consts.VIAGGI_TM_TYPE_SUD));
         viaggiSudPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
         ViaggiTableModel viaggiSudPinTableModel = (ViaggiTableModel) viaggiSudPinTable.getModel();
         viaggiSudPinTableModel.addTableModelListener(viaggiPinnedTableListener);
@@ -1476,6 +1501,25 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         nordTableModel.setCurrentDate(d);
         viaggiNordPinTableModel.setData(nordPinned);
         viaggiNordPinTableModel.setCurrentDate(d);
+
+
+        List<RowSorter.SortKey> sortKeys = new ArrayList<>(1);
+        sortKeys.add(new RowSorter.SortKey(3, SortOrder.ASCENDING));
+        //TODO: table sorter not set when table is empty (Needs to add a row and reload date)
+        if(viaggiNordPinTable.getRowCount() > 0) {
+            viaggiNordPinTableSorter = new TableRowSorter<>(viaggiNordPinTable.getModel());
+            viaggiNordPinTable.setRowSorter(viaggiNordPinTableSorter);
+            viaggiNordPinTableSorter.setSortKeys(sortKeys);
+            viaggiNordPinTableSorter.sort();
+        }
+
+        if(viaggiSudPinTable.getRowCount() > 0) {
+            viaggiSudPinTableSorter = new TableRowSorter<>(viaggiSudPinTable.getModel());
+            viaggiSudPinTable.setRowSorter(viaggiSudPinTableSorter);
+            viaggiSudPinTableSorter.setSortKeys(sortKeys);
+            viaggiSudPinTableSorter.sort();
+        }
+        logger.info("reloadTableModel: viaggi table models loaded successfully!");
     }
 
 
