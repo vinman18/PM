@@ -12,16 +12,17 @@ import it.vin.dev.menzione.logica.Camion;
 
 import java.net.URISyntaxException;
 
+@SuppressWarnings("Duplicates")
 public class EventsTest {
 
     public EventsTest() {
     }
 
-    public static void main(String[] args) throws URISyntaxException {
+    public static void main(String[] args) throws URISyntaxException, InterruptedException {
         Socket socket = IO.socket("http://localhost:3000");
 
         socket.on(Socket.EVENT_CONNECT, objects -> System.out.println("Connected")
-        ).on("index", objects -> System.out.println(objects[0])
+        ).on("message", objects -> System.out.println("Received message: '" + objects[0] + "'")
         ).on(Socket.EVENT_DISCONNECT, objects -> {
             System.out.println("Disconnection");
             socket.off("index");
