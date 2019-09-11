@@ -45,9 +45,9 @@ public class DatabaseService {
         String port = conf.getDbPort();
         String dbName = conf.getDbName();
 
-		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName;
-		String user = conf.getUser();
-		String password = conf.getPassword();
+		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName + "?serverTimezone=UTC";
+		String user = conf.getDbUser();
+		String password = conf.getDbPassword();
 
 		return DriverManager.getConnection(url, user, password);
 	}
@@ -64,6 +64,8 @@ public class DatabaseService {
 	    if(!conn.isClosed()) {
 	        throw new SQLException("Connection already opened");
         }
+
+
 
         this.conn = createConnection();
     }

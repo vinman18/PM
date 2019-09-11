@@ -1,21 +1,5 @@
 package it.vin.dev.menzione;
 
-import java.awt.EventQueue;
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.security.Policy;
-import java.util.Random;
-import java.util.UUID;
-
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-
 import it.vin.dev.menzione.database_helper.DatabaseClient;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.logica.Configuration;

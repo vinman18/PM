@@ -1,1 +1,8 @@
 /bin/
+.idea
+.settings
+Logs
+classes
+Exports
+target
+PM2.iml
