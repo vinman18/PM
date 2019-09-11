@@ -76,7 +76,7 @@ public class ViaggiUtils {
         return result;
     }
 
-    public static String createStringFromDate(Date d, boolean compactString) {
+    public static String createStringFromDate(java.util.Date d, boolean compactString) {
         int year, month, day;
         String[] data = d.toString().split("-");
         year = Integer.parseInt(data[0]);

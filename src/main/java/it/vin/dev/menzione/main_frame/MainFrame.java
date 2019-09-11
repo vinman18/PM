@@ -305,7 +305,6 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         public void actionPerformed(ActionEvent arg0) {
             logger.info("openCamionFrameAction: opening frame...");
             JButton b = (JButton) arg0.getSource();
-            MainFrame root = (MainFrame) SwingUtilities.getRoot(b);
             JFrame aggiungiCamionFrame = new AggiungiCamionFrame();
             aggiungiCamionFrame.setVisible(true);
         }
@@ -1807,7 +1806,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         } catch (RemoteException e) {
             logger.warn("notifyRowUpdated: sending update info to other clients error logged in next line");
             logger.error("DBH" , e);
-            updateMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
+            updateMessage += ". " + strings.getString("mainframe.infofield.update.communication.fail");
         }
         return updateMessage;
     }
@@ -1837,6 +1836,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
             infoTextField.setWarnMessage(strings.getString("database.helper.communication.fail"));
         }
 
+        infoTextField.setText(infoTextField.getText() + ". " + strings.getString("mainframe.infofield.click.more.info"));
         infoTextField.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -1875,20 +1875,13 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
         infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.day.add"), who, elapsedSeconds));
-        infoTextField.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                loadDate(date1, RELOAD_STANDARD);
-                infoTextField.clearMessage();
-            }
-        });
+        infoTextField.addMouseListener(aggiornaOnClickAdapter);
     }
 
-    @Override
-    public void onDateRemoved(String date, String who, long timestamp) {
-        logger.info("onDateRemoved: received database helper message: date removed '{}'", date);
-        Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
-        if(date1.equals(currentDate)) {
+
+    private void onDateRemoved(Date date, String who, long timestamp) {
+        logger.info("onDateRemoved: received database helper message: date removed '{}'", ViaggiUtils.createStringFromDate(date, true));
+        if(date.equals(currentDate)) {
             EventQueue.invokeLater(() -> {
                 Msg.warn(MainFrame.this, MessageFormat.format(strings.getString("database.helper.day.deleted"), who));
                 try {
@@ -1903,10 +1896,11 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         }
     }
 
-
+/*
     public MessageJLabel getMessageField() {
         return infoTextField;
     }
+    */
     class ColumnChangeListener implements TableColumnModelListener {
         JTable sourceTable;
         JTable targetTable;

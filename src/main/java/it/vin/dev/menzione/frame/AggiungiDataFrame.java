@@ -19,8 +19,9 @@ import javax.swing.table.TableColumn;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
-import it.vin.dev.menzione.events.NewDateAddedEvent;
-import it.vin.dev.menzione.events.ViaggiEventBus;
+import it.vin.dev.menzione.database_helper.DatabaseHelperException;
+import it.vin.dev.menzione.events.DateAddEvent;
+import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.main_frame.CustomDateTextField;
 import it.vin.dev.menzione.ViaggiUtils;
@@ -640,7 +641,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                 Msg.info(this, "Data aggiunta correttamente!");
                 DatabaseHelperChannel.getInstance().notifyDateAdded(newLastDate.toString());
                 //source.loadDate(newLastDate, MainFrame.RELOAD_RESETCONNECTION);
-                ViaggiEventBus.getInstance().post(new NewDateAddedEvent(newLastDate, NewDateAddedEvent.NewDateEventSource.ADD_DATE_FRAME));
+                ViaggiEventsBus.getInstance().post(new DateAddEvent(newLastDate, DateAddEvent.DateAddEventSource.ADD_DATE_FRAME));
                 dbu.closeConnection();
                 dispose();
             } else {
@@ -649,7 +650,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             }
         }catch(SQLException e){
             databaseError(e);
-        } catch (RemoteException e) {
+        } catch (DatabaseHelperException e) {
             logger.debug(e);
             logger.warn(e.getMessage());
         }

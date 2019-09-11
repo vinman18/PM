@@ -20,10 +20,12 @@ import it.vin.dev.menzione.database_helper.DatabaseClient;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.database_helper.IDatabaseHelper;
 import it.vin.dev.menzione.main_frame.MainFrame;
-import it.vin.dev.menzione.logica.Configuration;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import javax.swing.*;
+import javax.swing.plaf.nimbus.NimbusLookAndFeel;
+import java.awt.*;
+import java.io.IOException;
+import java.util.UUID;
 
 public class Main {
 

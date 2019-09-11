@@ -3,16 +3,16 @@ package it.vin.dev.menzione.events;
 
 import com.google.common.eventbus.EventBus;
 
-public class ViaggiEventBus {
-    private static ViaggiEventBus ourInstance = new ViaggiEventBus();
+public class ViaggiEventsBus {
+    private static ViaggiEventsBus ourInstance = new ViaggiEventsBus();
 
-    public static ViaggiEventBus getInstance() {
+    public static ViaggiEventsBus getInstance() {
         return ourInstance;
     }
 
     private EventBus eventBus;
 
-    private ViaggiEventBus() {
+    private ViaggiEventsBus() {
         eventBus = new EventBus();
     }
 

@@ -3,7 +3,7 @@ package it.vin.dev.menzione.logica;
 import com.google.common.eventbus.Subscribe;
 import it.vin.dev.menzione.events.CamionCacheUpdated;
 import it.vin.dev.menzione.events.CamionEvent;
-import it.vin.dev.menzione.events.ViaggiEventBus;
+import it.vin.dev.menzione.events.ViaggiEventsBus;
 
 import java.sql.SQLException;
 import java.util.Set;
@@ -27,7 +27,7 @@ public class CamionListCache {
 
             loadCacheFromDatabase();
 
-            ViaggiEventBus.getInstance().register(this);
+            ViaggiEventsBus.getInstance().register(this);
         } catch (SQLException e) {
             //TODO: add logging
         }
@@ -76,7 +76,7 @@ public class CamionListCache {
 
     public void notifyCacheUpdate() {
         invalidate();
-        ViaggiEventBus.getInstance().post(new CamionCacheUpdated());
+        ViaggiEventsBus.getInstance().post(new CamionCacheUpdated());
     }
 
     @Subscribe

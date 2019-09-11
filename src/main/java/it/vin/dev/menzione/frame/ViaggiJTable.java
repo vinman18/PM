@@ -12,8 +12,7 @@ import javax.swing.table.TableColumn;
 import com.google.common.eventbus.Subscribe;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.events.CamionCacheUpdated;
-import it.vin.dev.menzione.events.ViaggiEventBus;
-import it.vin.dev.menzione.logica.Camion;
+import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.logica.CamionListCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -37,7 +36,7 @@ public class ViaggiJTable extends JTable {
         setCellSelectionEnabled(true);
         setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         setAutoResizeMode(JTable.AUTO_RESIZE_SUBSEQUENT_COLUMNS);
-        ViaggiEventBus.getInstance().register(this);
+        ViaggiEventsBus.getInstance().register(this);
     }
 
     public ViaggiJTable(int type) {

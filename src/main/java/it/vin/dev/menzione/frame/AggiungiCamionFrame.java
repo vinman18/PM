@@ -9,7 +9,7 @@ import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.events.CamionInsertEvent;
 import it.vin.dev.menzione.events.CamionRemoveEvent;
 import it.vin.dev.menzione.events.CamionUpdateEvent;
-import it.vin.dev.menzione.events.ViaggiEventBus;
+import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.logica.Camion;
 import it.vin.dev.menzione.logica.DatabaseService;
 
@@ -61,7 +61,7 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
                         updateCamionList();
                         resultLabel.setText("Aggiunta effettuata con successo");
                         //callback.updateCamionList();
-                        ViaggiEventBus.getInstance().post(new CamionInsertEvent(c));
+                        ViaggiEventsBus.getInstance().post(new CamionInsertEvent(c));
                     } catch(MysqlDataTruncation e){
                         resultLabel.setText("ATTENZIONE: la targa deve avere 7 caratteri"
                                 + " (spazi inclusi)");
@@ -87,7 +87,7 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
                     dbu.rimuoviCamion(camion);
                     updateCamionList();
                     //callback.updateCamionList();
-                    ViaggiEventBus.getInstance().post(new CamionRemoveEvent(camion));
+                    ViaggiEventsBus.getInstance().post(new CamionRemoveEvent(camion));
                 } catch (SQLException e1) {
                     databaseError(e1);
                 }
@@ -118,7 +118,7 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
             try {
                 dbu.modificaCamion(c);
 
-                ViaggiEventBus.getInstance().post(new CamionUpdateEvent(c));
+                ViaggiEventsBus.getInstance().post(new CamionUpdateEvent(c));
 
                 Msg.info(root, "Modifica salvata con successo");
             } catch (SQLException e) {
