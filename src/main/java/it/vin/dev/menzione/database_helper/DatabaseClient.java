@@ -1,58 +1,19 @@
 package it.vin.dev.menzione.database_helper;
 
-import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
-
-public class DatabaseClient extends UnicastRemoteObject implements IDatabaseClient {
-
-    private DatabaseHelperListener listener;
-    private String name;
+public class DatabaseClient {
     private String id;
+    private String name;
 
-    public DatabaseClient(String id, String name) throws RemoteException {
-        this.name = name;
+    public DatabaseClient(String id, String name) {
         this.id = id;
+        this.name = name;
     }
 
-    @Override
-    public void onRowInserted(String tableName, String date, String whoId, String whoName, long timestamp) throws RemoteException {
-        if(listener != null) {
-            listener.onRowInserted(tableName, date, whoName, timestamp);
-        }
-    }
-
-    @Override
-    public void onRowUpdated(String tableName, String date, String whoId, String whoName, long timestamp) throws RemoteException {
-        if(listener != null) {
-            listener.onRowUpdated(tableName, date, whoName, timestamp);
-        }
-    }
-
-    @Override
-    public void onDateAdded(String date, String whoId, String whoName, long timestamp) throws RemoteException {
-        if(listener != null) {
-            listener.onDateAdded(date, whoName, timestamp);
-        }
-    }
-
-    @Override
-    public void onDateRemoved(String date, String whoId, String whoName, long timestamp) throws RemoteException {
-        if(listener != null) {
-            listener.onDateRemoved(date, whoName, timestamp);
-        }
-    }
-
-    @Override
-    public String getId() throws RemoteException {
+    public String getId() {
         return id;
     }
 
-    @Override
-    public String getName() throws RemoteException {
+    public String getName() {
         return name;
-    }
-
-    public void setListener(DatabaseHelperListener listener) {
-        this.listener = listener;
     }
 }

@@ -18,7 +18,7 @@ import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 
 import it.vin.dev.menzione.database_helper.DatabaseClient;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
-import it.vin.dev.menzione.database_helper.IDatabaseHelper;
+import it.vin.dev.menzione.logica.Configuration;
 import it.vin.dev.menzione.main_frame.MainFrame;
 
 import javax.swing.*;
@@ -75,8 +75,9 @@ public class Main {
         logger.debug(conf.getDbName());
         logger.debug(conf.getLocation());
         logger.debug(conf.getDbPort());
-        logger.debug(conf.getUser());
-        logger.debug(conf.getPassword());
+        logger.debug(conf.getDbUser());
+        logger.debug(conf.getDbPassword());
+/*
 
         String serverPolicyPath = "./java.policy";
         File policyFile = new File(serverPolicyPath);
@@ -91,6 +92,7 @@ public class Main {
             logger.warn("No policy file found on " + policyFile.getAbsolutePath());
             Msg.warn(null, "File di policy non trovato");
         }
+*/
 
         EventQueue.invokeLater(new Runnable() {
             public void run() {
@@ -99,27 +101,20 @@ public class Main {
                     MainFrame frame = new MainFrame();
 
                     DatabaseClient client = null;
-                    try {
+//                    try {
                         logger.info("Connection with remote DatabaseHelper server on ip " + conf.getDbhelperHost());
                         String id = UUID.randomUUID().toString();
-                        client = new DatabaseClient(id, System.getProperty("user.name"));
-                        Registry registry = LocateRegistry.getRegistry(conf.getDbhelperHost(), conf.getDbhelperPort());
-                        IDatabaseHelper helper = (IDatabaseHelper) registry.lookup("DatabaseHelper");
-                        helper.connect(client, client.getId());
-                        DatabaseHelperChannel.getInstance().setHelper(helper);
-                        DatabaseHelperChannel.getInstance().setClient(client);
+                        client = new DatabaseClient(id, conf.getUser());
+                        DatabaseHelperChannel helper = DatabaseHelperChannel.getInstance();
+                        helper.connect(client);
                         logger.info("Remote DatabaseHelper connected");
-                    } catch (NotBoundException | RemoteException e) {
+                   /* } catch (NotBoundException | RemoteException e) {
                         logger.debug("Connection with remote DatabaseHelper failed. " + e.getMessage(), e);
                         logger.warn("Connection with remote DatabaseHelper failed. " + e.getMessage());
                         e.printStackTrace();
                         frame.getMessageField().setWarnMessage("Impossibile connettersi al servizio di notifica. " +
                                 "Le modifiche effettuate non verranno notificate agli altri clients.");
-                    }
-
-                    if(client != null) {
-                        client.setListener(frame);
-                    }
+                    }*/
 
                     frame.pack();
                     frame.setVisible(true);

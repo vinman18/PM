@@ -32,19 +32,20 @@ public class Configuration {
     public static void setIp(String ip) {
         Configuration.ip = ip;
     }
-    public static String getUser() {
+    public static String getDbUser() {
         return user;
     }
     public static void setUser(String user) {
         Configuration.user = user;
     }
-    public static String getPassword() {
+    public static String getDbPassword() {
         return password;
     }
     public static void setPassword(String password) {
         Configuration.password = password;
     }
     */
+    public static final String USER =        "local.user";
     public static final String DB_NAME =     "db.name";
     public static final String DB_LOCATION = "db.location";
     public static final String DB_PORT =     "db.port";
@@ -92,11 +93,11 @@ public class Configuration {
         return props.getProperty(DB_LOCATION);
     }
 
-    public String getUser() {
+    public String getDbUser() {
         return props.getProperty(DB_USER);
     }
 
-    public String getPassword() {
+    public String getDbPassword() {
         return props.getProperty(DB_PASSWORD);
     }
 
@@ -110,6 +111,10 @@ public class Configuration {
 
     public String getDbhelperHost() {
         return props.getProperty(DBHELPER_HOST);
+    }
+
+    public String getUser() {
+        return props.getProperty(USER, System.getProperty("user.name"));
     }
 
     public int getDbhelperPort() {

@@ -7,7 +7,7 @@ import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
 import it.vin.dev.menzione.events.CamionInsertEvent;
 import it.vin.dev.menzione.events.CamionUpdateEvent;
-import it.vin.dev.menzione.events.ViaggiEventBus;
+import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.logica.Camion;
 
 import java.net.URISyntaxException;

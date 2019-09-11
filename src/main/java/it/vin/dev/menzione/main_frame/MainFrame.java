@@ -6,9 +6,10 @@ import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.VerboseLogger;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
-import it.vin.dev.menzione.database_helper.DatabaseHelperListener;
-import it.vin.dev.menzione.events.NewDateAddedEvent;
-import it.vin.dev.menzione.events.ViaggiEventBus;
+import it.vin.dev.menzione.database_helper.DatabaseHelperException;
+import it.vin.dev.menzione.events.DateAddEvent;
+import it.vin.dev.menzione.events.ViaggiEventsBus;
+import it.vin.dev.menzione.events.dbh.*;
 import it.vin.dev.menzione.frame.*;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.workers.NoteUpdateWorker;
@@ -27,7 +28,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
-import java.rmi.RemoteException;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.text.MessageFormat;
@@ -36,7 +36,7 @@ import java.util.List;
 
 
 @SuppressWarnings({"FieldCanBeLocal", "Duplicates"})
-public class MainFrame extends JFrame implements TableModelListener, DatabaseHelperListener{
+public class MainFrame extends JFrame implements TableModelListener {
     private static final boolean DEBUG_FRAME = ViaggiFrameUtils.DEBUG_FRAME;
 
     private static final int RELOAD_STANDARD = 0;
@@ -65,7 +65,8 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
     private VerboseLogger logger = VerboseLogger.create(MainFrame.class);
 
     private Date currentDate;
-//    public  Vector<Camion> camions;
+
+    private boolean dbhConnectionErrorShowed = false;
 
     private JPanel contentPane;
     private JScrollPane sudTableScrollPane;
@@ -296,7 +297,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         public void mouseClicked(MouseEvent e) {
             logger.info("aggiornaOnClickAdapter: reloading current date...");
             loadDate(currentDate, RELOAD_STANDARD);
-            infoTextField.clearMessage();
+            infoTextField.setInfoMessage(strings.getString("mainframe.infofield.welcome"));
         }
     };
 
@@ -623,7 +624,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
                     } catch (SQLException e1) {
                         logger.warn("deleteThisDayAction: database deletion error logged in next line");
                         logDatabaseError(e1);
-                    } catch (RemoteException e1) {
+                    } catch (DatabaseHelperException e1) {
                         logger.warn("deleteThisDayAction: remote notification send error logged in next line");
                         logger.error(e1.getMessage(), e1);
                         infoTextField.setWarnMessage(strings.getString("database.helper.communication.fail"));
@@ -884,7 +885,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
             }
         }
 
-        ViaggiEventBus.getInstance().register(this);
+        ViaggiEventsBus.getInstance().register(this);
 
         rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("F12"), "openConfig");
         rootPane.getActionMap().put("openConfig", openConfigAction);
@@ -1421,19 +1422,6 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         formattaTabelle();
     }*/
 
-    @Subscribe
-    public void onNewDateAddedEvent(NewDateAddedEvent event) {
-        logger.verbose("onNewDateAddedEvent: received new NewDateAddedEvent. New last date: {}", ViaggiUtils.createStringFromDate(event.getNewLastDate(), false));
-        switch (event.getSource()) {
-            case ADD_DATE_FRAME:
-                loadDate(event.getNewLastDate(), RELOAD_RESETCONNECTION);
-                break;
-            case DATABASE_HELPER:
-                //no implemented yet
-                break;
-        }
-    }
-
 
     public void reloadTableModel(Date d) throws SQLException {
         logger.info("reloadTableModel: reloading viaggi table models...");
@@ -1760,12 +1748,12 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
             public void windowClosing(WindowEvent arg0) {
                 logger.info("windowClosing: exiting...");
                 try {
+                    logger.info("windowClosing: disconnecting from database helper server...");
+                    DatabaseHelperChannel.getInstance().disconnect();
                     logger.info("windowClosing: closing database connection...");
                     dbs.closeConnection();
                     logger.verbose("windowClosing: closing database connection success!");
-                    logger.info("windowClosing: disconnecting from database helper server...");
-                    DatabaseHelperChannel.getInstance().disconnect();
-                } catch (SQLException | RemoteException e) {
+                } catch (SQLException e) {
                     logger.warn("windowsClosing: disconnection error logged in next line");
                     logger.error(e.getMessage(), e);
                     e.printStackTrace();
@@ -1803,7 +1791,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
             logger.verbose("notifyRowUpdated: sending update info to other clients...");
             DatabaseHelperChannel.getInstance().notifyRowUpdated(table, date);
             logger.verbose("notifyRowUpdated: sending update info to other clients success!");
-        } catch (RemoteException e) {
+        } catch (DatabaseHelperException e) {
             logger.warn("notifyRowUpdated: sending update info to other clients error logged in next line");
             logger.error("DBH" , e);
             updateMessage += ". " + strings.getString("mainframe.infofield.update.communication.fail");
@@ -1818,7 +1806,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
             logger.verbose("notifyRowInserted: sending update info to other clients...");
             DatabaseHelperChannel.getInstance().notifyRowInserted(table, date);
             logger.verbose("notifyRowInserted: sending update info to other clients success!");
-        } catch (RemoteException e) {
+        } catch (DatabaseHelperException e) {
             logger.warn("notifyRowInserted: sending update info to other clients error logged in next line");
             logger.error("DBH", e);
             insertMessage += " " + strings.getString("mainframe.infofield.update.communication.fail");
@@ -1832,7 +1820,7 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
 
         if (error instanceof SQLException) {
             infoTextField.setErrorMessage(strings.getString("mainframe.infofield.database.error"));
-        } else if (error instanceof RemoteException) {
+        } else if (error instanceof DatabaseHelperException) {
             infoTextField.setWarnMessage(strings.getString("database.helper.communication.fail"));
         }
 
@@ -1845,34 +1833,84 @@ public class MainFrame extends JFrame implements TableModelListener, DatabaseHel
         });
     }
 
-    //LISTENER FOR MESSAGES FROM DatabaseHelper
-    @Override
-    public void onRowInserted(String tableName, String date, String who, long timestamp) {
-        logger.info("onRowInserted: received database helper message: row inserted into table '{}' and date '{}'", tableName, date);
-        long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        Date d = ViaggiUtils.checkAndCreateDate(date, "-", true);
-        if(currentDate.equals(d)) {
-            infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.insert"), tableName, who, elapsedSeconds));
+    //LISTENERS FOR EventBus EVENTS
+    @Subscribe
+    public void onDateEvent(DateEvent event) {
+        String dateString = ViaggiUtils.createStringFromDate(event.date, false);
+        if(event instanceof DateDeleteEvent) {
+            logger.verbose("onDateEvent: received new DateDeleteEvent. Removed date: {}", dateString);
+            onDateRemoved(event.date, event.whoName, event.timestamp);
+        } else if(event instanceof DateAddEvent) {
+            DateAddEvent dateAddEvent = ((DateAddEvent) event);
+
+            switch (dateAddEvent.getSource()) {
+                case ADD_DATE_FRAME:
+                    logger.verbose("onDateEvent: received new DateAddEvent from ADD_DATE_FRAME. New last date: {}", dateString);
+                    loadDate(dateAddEvent.getDate(), RELOAD_RESETCONNECTION);
+                    break;
+                case DATABASE_HELPER:
+                    logger.verbose("onDateEvent: received new DateAddEvent from DATABASE_HELPER. New last date: {}", dateString);
+                    onDateAdded(dateAddEvent.getDate(), dateAddEvent.getWhoName(), dateAddEvent.getTimestamp());
+                    break;
+            }
+        }
+    }
+
+    @Subscribe
+    public void onDbhRowEvent(RowEvent event) {
+        String dateString = ViaggiUtils.createStringFromDate(event.date, true);
+        String logString = "", textFieldString = "";
+        long elapsedSeconds = (System.currentTimeMillis() - event.timestamp) / 1000;
+
+        if(event instanceof RowInsertEvent) {
+            logString = "inserted";
+            textFieldString = MessageFormat.format(strings.getString("database.helper.table.row.insert"), event.tableName, event.whoName, elapsedSeconds);
+        } else if(event instanceof RowUpdateEvent) {
+            logString = "updated";
+            textFieldString = MessageFormat.format(strings.getString("database.helper.table.row.update"), event.tableName, event.whoName, elapsedSeconds);
+        } else if(event instanceof RowDeleteEvent) {
+            //TODO: not implemented yet
+        }
+
+        logger.info("onRowUpdated: received database helper message: row {} into table '{}' and date '{}'", logString, event.tableName, dateString);
+
+        if(currentDate.equals(event.date)) {
+            infoTextField.setUploadMessage(textFieldString);
             infoTextField.addMouseListener(aggiornaOnClickAdapter);
         }
     }
 
-    @Override
-    public void onRowUpdated(String tableName, String date, String who, long timestamp) {
-        logger.info("onRowUpdated: received database helper message: row updated into table '{}' and date '{}'", tableName, date);
-        long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
-        Date d = ViaggiUtils.checkAndCreateDate(date, "-", true);
-        if (currentDate.equals(d)) {
-            infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.table.row.update"), tableName, who, elapsedSeconds));
-            infoTextField.addMouseListener(aggiornaOnClickAdapter);
+    @Subscribe
+    public void onSocketEvent(SocketEvent event) {
+        if(event instanceof SocketConnectEvent) {
+            switch (((SocketConnectEvent) event).type) {
+                case CONNECT:
+                    infoTextField.setUploadMessage(strings.getString("database.helper.connection.success"));
+                    break;
+                case RECONNECT:
+                    infoTextField.setUploadMessage(strings.getString("database.helper.reconnect.success"));
+                    break;
+            }
+
+            dbhConnectionErrorShowed = false;
+        } else if(event instanceof SocketConnectionErrorEvent) {
+            if(!dbhConnectionErrorShowed) {
+                infoTextField.setWarnMessage(strings.getString("database.helper.connection.error"));
+                dbhConnectionErrorShowed = true;
+            }
+        } else if(event instanceof SocketErrorEvent) {
+            SocketErrorEvent socketErrorEvent = ((SocketErrorEvent) event);
+            if(socketErrorEvent.hasException()) {
+                onError(socketErrorEvent.getException());
+            } else {
+                infoTextField.setWarnMessage(infoTextField.getText() + ". " + strings.getString("database.helper.communication.fail"));
+            }
+            dbhConnectionErrorShowed = true;
         }
     }
 
-
-    @Override
-    public void onDateAdded(String date, String who, long timestamp) {
+    private void onDateAdded(Date date, String who, long timestamp) {
         logger.info("onDateAdded: received database helper message: new date added '{}'", date);
-        Date date1 = ViaggiUtils.checkAndCreateDate(date, "-", true);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
         infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.day.add"), who, elapsedSeconds));
         infoTextField.addMouseListener(aggiornaOnClickAdapter);
