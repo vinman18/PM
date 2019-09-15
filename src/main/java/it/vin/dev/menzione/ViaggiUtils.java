@@ -3,40 +3,102 @@ package it.vin.dev.menzione;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class ViaggiUtils {
 
     private static Logger logger = LogManager.getLogger(ViaggiUtils.class);
+    private final static String userHome = System.getProperty("user.home");
+
+    public static String getAppPath() {
+        String appPath = userHome + "\\AppData\\Local\\GestioneViaggi\\";
+
+        return appPath.replace("\\", File.separator);
+    }
+
+    public static String getAppPath(String relativePath) {
+        return getAppPath() + relativePath;
+    }
 
     public static String getConfigPath() {
-        return System.getProperty("user.dir")  + File.separator + "Config.properties";
+        return getAppPath("Config.properties");
+    }
+
+    public static String getColumnsPreferencesPath() {
+        return getAppPath("ColumnsPreferences.json");
     }
 
     public static InputStream getDefaultConfig() {
-        return ViaggiUtils.class.getClassLoader().getResourceAsStream("DefaultConfig.properties");
+        return getResourceAsStream("DefaultFiles/Config.properties");
     }
 
-    public static void checkAndCreateConfigFile() throws IOException {
-        String configPath = getConfigPath();
+    private static List<String> getResourceFiles(String path) throws IOException {
+        List<String> filenames = new ArrayList<>();
 
-        File configFile = new File(configPath);
+        try (
+                InputStream in = getResourceAsStream(path);
+                BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
+            String resource;
 
-        InputStream defaultConfig = getDefaultConfig();
+            while ((resource = br.readLine()) != null) {
+                filenames.add(resource);
+            }
+        }
 
-        if(!configFile.exists()){
-            logger.info("Config file not found. Copying default file in " + configFile.getAbsolutePath());
+        return filenames;
+    }
 
-            Files.copy(defaultConfig,
-                    configFile.toPath(),
+    private static InputStream getResourceAsStream(String resource) {
+        final InputStream in
+                = getContextClassLoader().getResourceAsStream(resource);
+
+        return in == null ? ViaggiUtils.class.getResourceAsStream(resource) : in;
+    }
+
+    private static ClassLoader getContextClassLoader() {
+        return Thread.currentThread().getContextClassLoader();
+    }
+
+    public static void checkAndCreateAppFiles() throws IOException {
+        String appPath = getAppPath();
+//        String configPath = getConfigPath();
+
+        File appFolder = new File(appPath);
+//        File configFile = new File(configPath);
+//        File columnsFile = new File(getColumnsPreferencesPath());
+//        InputStream defaultConfig = getDefaultConfig();
+        List<String> defaultFiles = getResourceFiles("DefaultFiles");
+
+        if(!appFolder.exists()) {
+            logger.info("App folder not found. Creation...");
+            boolean result = appFolder.mkdirs();
+            if(!result) {
+                throw new IOException("App folder creation return false");
+            }
+        }
+
+        for(String file : defaultFiles) {
+            String resourceFilePath = "DefaultFiles/" + file;
+            String fileDestinationPath = getAppPath(file);
+            File destinationFile = new File(fileDestinationPath);
+
+            if(!destinationFile.exists()) {
+                logger.info("{} file not found. Copying default file in {}", file, destinationFile.getAbsolutePath());
+
+                Files.copy(getResourceAsStream(resourceFilePath),
+                    destinationFile.toPath(),
                     StandardCopyOption.REPLACE_EXISTING);
+            }
         }
     }
 
@@ -95,6 +157,13 @@ public class ViaggiUtils {
         }
 
         return dat;
+    }
+
+    public static Timer executeAfter(int milliseconds, ActionListener actionListener) {
+        Timer t = new Timer(milliseconds, actionListener);
+        t.setRepeats(false);
+        t.start();
+        return t;
     }
 
     public static URL getMainIcon() {

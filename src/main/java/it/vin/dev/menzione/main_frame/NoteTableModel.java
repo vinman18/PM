@@ -99,6 +99,10 @@ public class NoteTableModel extends AbstractTableModel {
 	}
 	
 	public Nota removeRow(int row){
+		if(row < 0) {
+			throw new IllegalArgumentException("Invalid row number");
+		}
+
 		Nota tmp = note.remove(row);
 		fireTableRowsDeleted(row, row);
 		return tmp;

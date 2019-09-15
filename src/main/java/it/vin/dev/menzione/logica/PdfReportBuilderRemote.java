@@ -178,10 +178,10 @@ public class PdfReportBuilderRemote {
         boolean ordiniDiscesaOK;
 
 
-        PdfPTable nordPdfTable = creaViaggiTable(this.nordList, Consts.VIAGGI_TM_TYPE_NORD);
-        PdfPTable sudPdfTable = creaViaggiTable(this.sudList, Consts.VIAGGI_TM_TYPE_SUD);
-        PdfPTable nordPinPdfTable = creaViaggiTable(this.nordPinnedList, Consts.VIAGGI_TM_TYPE_NORD);
-        PdfPTable sudPinPdfTable = creaViaggiTable(this.sudPinnedList, Consts.VIAGGI_TM_TYPE_SUD);
+        PdfPTable nordPdfTable = creaViaggiTable(this.nordList, Consts.TABLE_TYPES.VIAGGI_NORD);
+        PdfPTable sudPdfTable = creaViaggiTable(this.sudList, Consts.TABLE_TYPES.VIAGGI_SUD);
+        PdfPTable nordPinPdfTable = creaViaggiTable(this.nordPinnedList, Consts.TABLE_TYPES.VIAGGI_NORD);
+        PdfPTable sudPinPdfTable = creaViaggiTable(this.sudPinnedList, Consts.TABLE_TYPES.VIAGGI_SUD);
 
         nordOK = nordPdfTable != null && nordPinPdfTable != null;
 
@@ -235,10 +235,10 @@ public class PdfReportBuilderRemote {
         if (viaggi != null) {
             PdfPTable pdfTable = null;
 
-            if (viaggiTmType == Consts.VIAGGI_TM_TYPE_NORD) {
+            if (viaggiTmType == Consts.TABLE_TYPES.VIAGGI_NORD) {
                 float[] larghezzaColonne = {1.7f, 3f, 3f, 5f, 1f};
                 pdfTable = new PdfPTable(larghezzaColonne);
-            } else if (viaggiTmType == Consts.VIAGGI_TM_TYPE_SUD) {
+            } else if (viaggiTmType == Consts.TABLE_TYPES.VIAGGI_SUD) {
                 float[] larghezzaColonne = {1.7f, 3f, 3f, 5f, 1f, 1f};
                 pdfTable = new PdfPTable(larghezzaColonne);
             }
@@ -264,7 +264,7 @@ public class PdfReportBuilderRemote {
             noteCell.setBackgroundColor(GrayColor.DARK_GRAY);
             pdfTable.addCell(noteCell);
 
-            if (viaggiTmType == Consts.VIAGGI_TM_TYPE_SUD) {
+            if (viaggiTmType == Consts.TABLE_TYPES.VIAGGI_SUD) {
                 PdfPCell litriCell = new PdfPCell(new Phrase(strings.getString("report.viaggio.litri"), f));
                 litriCell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 litriCell.setBackgroundColor(GrayColor.DARK_GRAY);
@@ -287,7 +287,7 @@ public class PdfReportBuilderRemote {
 
                 PdfPCell litri = null;
 
-                if (viaggiTmType == Consts.VIAGGI_TM_TYPE_SUD) {
+                if (viaggiTmType == Consts.TABLE_TYPES.VIAGGI_SUD) {
                     litri = new PdfPCell(new Phrase("" + (v.getLitriB())));
                 }
 
@@ -306,7 +306,7 @@ public class PdfReportBuilderRemote {
                 pdfTable.addCell(c3);
                 pdfTable.addCell(c4);
 
-                if (viaggiTmType == Consts.VIAGGI_TM_TYPE_SUD) {
+                if (viaggiTmType == Consts.TABLE_TYPES.VIAGGI_SUD) {
                     pdfTable.addCell(litri);
                 }
 

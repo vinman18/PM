@@ -45,14 +45,15 @@ public class Configuration {
         Configuration.password = password;
     }
     */
-    public static final String USER =        "local.user";
-    public static final String DB_NAME =     "db.name";
-    public static final String DB_LOCATION = "db.location";
-    public static final String DB_PORT =     "db.port";
-    public static final String DB_USER =     "db.user";
-    public static final String DB_PASSWORD = "db.password";
-    public static final String DBHELPER_HOST = "dbhelper.host";
-    public static final String DBHELPER_PORT = "dbhelper.port";
+    public static final String USER =               "local.user";
+    public static final String DB_NAME =            "db.name";
+    public static final String DB_LOCATION =        "db.location";
+    public static final String DB_PORT =            "db.port";
+    public static final String DB_USER =            "db.user";
+    public static final String DB_PASSWORD =        "db.password";
+    public static final String DBHELPER_HOST =      "dbhelper.host";
+    public static final String DBHELPER_PORT =      "dbhelper.port";
+    public static final String UNDO_WAIT_SECONDS =  "mainframe.undo.wait.secs";
 
     private Properties props;
 
@@ -77,7 +78,7 @@ public class Configuration {
         props.load(new FileInputStream(configPath));
     }
 
-    public String getConfiguration(String type){
+    public String getProperty(String type){
         return props.getProperty(type);
     }
 

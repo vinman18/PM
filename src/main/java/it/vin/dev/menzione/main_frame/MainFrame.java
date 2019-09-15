@@ -1,6 +1,9 @@
 package it.vin.dev.menzione.main_frame;
 
+import com.google.common.base.Charsets;
 import com.google.common.eventbus.Subscribe;
+import com.google.common.io.CharSource;
+import com.google.common.io.Files;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.VerboseLogger;
@@ -12,18 +15,15 @@ import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.events.dbh.*;
 import it.vin.dev.menzione.frame.*;
 import it.vin.dev.menzione.logica.*;
-import it.vin.dev.menzione.workers.NoteUpdateWorker;
-import it.vin.dev.menzione.workers.UpdateWorkerAdapter;
-import it.vin.dev.menzione.workers.UpdateWorkerListener;
-import it.vin.dev.menzione.workers.ViaggiUpdateWorker;
+import it.vin.dev.menzione.workers.*;
 import org.apache.logging.log4j.ThreadContext;
 
+import javax.annotation.Nullable;
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.*;
 import javax.swing.table.TableColumnModel;
-import javax.swing.table.TableModel;
-import javax.swing.table.TableRowSorter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -32,7 +32,6 @@ import java.sql.Date;
 import java.sql.SQLException;
 import java.text.MessageFormat;
 import java.util.*;
-import java.util.List;
 
 
 @SuppressWarnings({"FieldCanBeLocal", "Duplicates"})
@@ -56,8 +55,11 @@ public class MainFrame extends JFrame implements TableModelListener {
     private static final String SUD_ADD_ROW_COMMAND = "sud_add_row";
     private static final String NORD_REMOVE_ROW_COMMAND = "nord_remove_row";
     private static final String SUD_REMOVE_ROW_COMMAND = "sud_remove_row";
+    private static final String NORD_PIN_REMOVE_COMMAND = "nord_pin_remove_row";
+    private static final String SUD_PIN_REMOVE_COMMAND = "nord_pin_remove_command";
 
     private ResourceBundle strings = ResourceBundle.getBundle("Localization/Strings");
+//    private MainFrameColumnsSize mainFrameColumnsSize;
 
     //    private Date lastDateFromDb;
     private DatabaseService dbs;
@@ -155,11 +157,7 @@ public class MainFrame extends JFrame implements TableModelListener {
     private Nota fermiNota;
     private Nota nonAssNota;
 
-
-    private TableRowSorter<TableModel> viaggiNordPinTableSorter;
-    private TableRowSorter<TableModel> viaggiSudPinTableSorter;
-
-    private Map<JTable, TableColumnModelListener> tableColumnModelListenerMap;
+//    private Map<JTable, TableColumnModelListener> tableColumnModelListenerMap;
 
     private TableModelListener viaggiPinnedTableListener = new TableModelListener() {
         @Override
@@ -181,6 +179,35 @@ public class MainFrame extends JFrame implements TableModelListener {
             switch (type) {
                 case TableModelEvent.INSERT:
                     v = model.getElementAt(row);
+                    if(v.isPinned()) { // if isPinned is always true we have to add it to database (if id < 0)
+                        if(v.getId() < 0) {
+                            ViaggiUpdateWorker.connect(dbs)
+                                    .insert(v)
+                                    .onResult(new UpdateWorkerAdapter<Viaggio>() {
+                                        @Override
+                                        public void onError(Exception error) {
+                                            logger.warn("viaggiPinTableListener: viaggio insert database error logged in next line");
+                                            MainFrame.this.onError(error);
+                                        }
+                                        @Override
+                                        public void onInsert(Viaggio inserted, long newId) {
+                                            logger.info("viaggiPinTableListener: new viaggio sent successfully! New viaggio id = {}", newId);
+                                            logger.verbose("viaggiPinTableListener: viaggio returned from database: {}", inserted.toString());
+
+                                            if(newId > 0){
+                                                model.getElementAt(row).setId(newId);
+                                            } else {
+                                                onError(new IllegalArgumentException("Invalid id returned from database"));
+                                            }
+
+                                            JTable t = model.getType() == Consts.TABLE_TYPES.VIAGGI_NORD ? viaggiNordPinTable : viaggiSudPinTable;
+                                            ViaggiFrameUtils.selectTableCell(t, row, 0);
+                                        }
+                                    })
+                                    .execute();
+                            return;
+                        }
+                    }
                     logger.info("ViaggiPinnedTableListener: inserted new row in table Pinned {}", ViaggiTableModel.getTableModelName(model));
                     logger.verbose("Element before insert: {}", v.toString());
                     v.setPinned(true);
@@ -188,9 +215,14 @@ public class MainFrame extends JFrame implements TableModelListener {
                     break;
                 case TableModelEvent.DELETE:
                     v = ((ViaggiPinTableModel) model).getRemovedRow(row);
+                    if(v.isPinned()) { // if pinned is true so the row isn't unpinned, so it was removed from database
+                        return;  // and we have nothing to do
+                    }
+
+                    // if pinned was set to false, so unpin was requested and we have to update the database
                     logger.info("ViaggiPinnedTableListener: removed row in table Pinned {}", ViaggiTableModel.getTableModelName(model));
                     logger.verbose("Element before delete: {}", v.toString());
-                    v.setPinned(false);
+//                    v.setPinned(false);
                     col = Viaggio.COL_PINNED;
                     break;
                 case TableModelEvent.UPDATE:
@@ -297,7 +329,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         public void mouseClicked(MouseEvent e) {
             logger.info("aggiornaOnClickAdapter: reloading current date...");
             loadDate(currentDate, RELOAD_STANDARD);
-            infoTextField.setInfoMessage(strings.getString("mainframe.infofield.welcome"));
+//            infoTextField.setInfoMessage(strings.getString("mainframe.infofield.welcome"));
         }
     };
 
@@ -330,7 +362,7 @@ public class MainFrame extends JFrame implements TableModelListener {
                 Date lastDate = dbs.getLastDate();
                 logger.verbose("goToLastDateAction: date returned from database: {}", lastDate.toString());
                 if(!currentDate.equals(lastDate)) {
-                    loadDate(lastDate, RELOAD_STANDARD);
+                    loadDate(lastDate, RELOAD_RESETCONNECTION);
                 }
             } catch (SQLException e1) {
                 logger.warn("goToLastDateAction: date retreiving error logged in next line");
@@ -400,7 +432,12 @@ public class MainFrame extends JFrame implements TableModelListener {
     private final ActionListener removeOrderAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
+            int secondsToWait = Integer.parseInt(Configuration.getInstance().getProperty(Configuration.UNDO_WAIT_SECONDS));
             String command = arg0.getActionCommand();
+            String deleteSuccessMessage = strings.getString("mainframe.infofield.table.row.delete");
+            String clickToCancelMessage = MessageFormat.format(
+                    strings.getString("mainframe.infofield.click.here.to.cancel"), secondsToWait
+            );
             logger.verbose("removeOrderAction: requested row deleting with command '{}'", arg0.getActionCommand());
             OrdiniTable table = command.equals(ORDINI_DISCESA_COMMAND)
                     ? ordiniDiscesaTable
@@ -410,19 +447,43 @@ public class MainFrame extends JFrame implements TableModelListener {
             int rowSel = table.getSelectedRow();
             int colSel = table.getSelectedColumn();
 
+            if(rowSel < 0) {
+                logger.verbose("removeOrderAction: invalid row number ({}). Action ignored", rowSel);
+                return;
+            }
+
             OrdiniTableModel tm = (OrdiniTableModel) table.getModel();
 
             logger.info("removeOrderAction: removing order in row {} from table Ordini {}", rowSel, tableType);
 
-            Ordine o = tm.removeRow(rowSel);
+            Ordine removed = tm.removeRow(rowSel);
 
-            logger.verbose("removeOrderAction: order to remove: {}", o.toString());
+            logger.verbose("removeOrderAction: order to remove: {}", removed.toString());
 
             try {
-                dbs.rimuoviOrdine(o);
+                dbs.rimuoviOrdine(removed);
                 logger.info("removeOrderAction: order removed from database successfully!");
+                infoTextField.setInfoMessage(deleteSuccessMessage + ". " + clickToCancelMessage);
+                Timer t = ViaggiUtils.executeAfter(secondsToWait * 1000, new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        infoTextField.setInfoMessage(deleteSuccessMessage);
+                    }
+                });
+                infoTextField.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        t.stop();
+                        logger.info("removeOrderAction: row deletion cancelled by user. Reinserting deleted row");
+                        OrdiniUpdateWorker.connect(dbs)
+                                .insert(removed)
+                                .onResult(ordiniUpdateResultListener)
+                                .execute();
+                        infoTextField.setInfoMessage(strings.getString("mainframe.infofield.table.row.delete.cancelled"));
+                    }
+                });
             } catch (SQLException e) {
-                tm.addRow(o);
+                tm.addRow(removed);
                 logger.warn("removeOrderAction: order removing error logged in next line");
                 logDatabaseError(e);
             }
@@ -452,7 +513,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 
                             @Override
                             public void onInsert(Nota inserted, long newId) {
-                                logger.info("aggiungiNotaAction: new nota sent successfully with id {}" + newId);
+                                logger.info("aggiungiNotaAction: new nota sent successfully with id {}", newId);
                                 nuovo.setId(newId);
                                 NoteTableModel tm = (NoteTableModel) noteTable.getModel();
                                 tm.addRow(nuovo);
@@ -481,6 +542,11 @@ public class MainFrame extends JFrame implements TableModelListener {
             NoteTableModel tm = (NoteTableModel) noteTable.getModel();
 
             logger.info("deleteNoteAction: removing nota in row {}", selRow);
+            if(selRow < 0) {
+                logger.verbose("deleteNoteAction: invalid row number ({}). Action ignored", selRow);
+                return;
+            }
+
             Nota n = tm.removeRow(selRow);
 
             logger.verbose("deleteNoteAction: nota to remove: {}", n.toString());
@@ -591,8 +657,8 @@ public class MainFrame extends JFrame implements TableModelListener {
     private ActionListener reloadAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            logger.info("reloadAction: reloading currentDate {} with RELOAD_RESETCONNECTION flag", ViaggiUtils.createStringFromDate(currentDate, false));
-            loadDate(currentDate, MainFrame.RELOAD_RESETCONNECTION);
+            logger.info("reloadAction: reloading currentDate {} with RELOAD_STANDARD flag", ViaggiUtils.createStringFromDate(currentDate, false));
+            loadDate(currentDate, MainFrame.RELOAD_STANDARD);
         }
     };
 
@@ -617,10 +683,10 @@ public class MainFrame extends JFrame implements TableModelListener {
                         dbs.deleteDate(currentDate);
                         logger.info("deleteThisDayAction: date {} deleted successfully!", ViaggiUtils.createStringFromDate(currentDate, false));
                         logger.info("deleteThisDayAction: sending remote notification to other clients...");
-                        DatabaseHelperChannel.getInstance().notifyDateRemoved(currentDate.toString());
-                        logger.info("deleteThisDayAction: notification sended successfully!");
                         logger.info("deleteThisDayAction: loading new last date...");
                         loadDate(dbs.getDataAggiornamento(), RELOAD_RESETCONNECTION);
+                        logger.info("deleteThisDayAction: notification sended successfully!");
+                        DatabaseHelperChannel.getInstance().notifyDateRemoved(currentDate.toString());
                     } catch (SQLException e1) {
                         logger.warn("deleteThisDayAction: database deletion error logged in next line");
                         logDatabaseError(e1);
@@ -686,7 +752,8 @@ public class MainFrame extends JFrame implements TableModelListener {
         @Override
         public void actionPerformed(ActionEvent e) {
             JTable pinTable;
-            ViaggiTableModel tableModel, pinTableModel;
+            ViaggiTableModel tableModel;
+            ViaggiPinTableModel pinTableModel;
 
             logger.verbose("viaggiUnPinAction: requested unpin action with command '{}'", e.getActionCommand());
 
@@ -694,12 +761,12 @@ public class MainFrame extends JFrame implements TableModelListener {
                 case NORD_UNPIN_COMMAND:
                     pinTable = viaggiNordPinTable;
                     tableModel = ((ViaggiTableModel) viaggiNordTable.getModel());
-                    pinTableModel = (ViaggiTableModel) viaggiNordPinTable.getModel();
+                    pinTableModel = (ViaggiPinTableModel) viaggiNordPinTable.getModel();
                     break;
                 case SUD_UNPIN_COMMAND:
                     pinTable = viaggiSudPinTable;
                     tableModel = (ViaggiTableModel) viaggiSudTable.getModel();
-                    pinTableModel = (ViaggiTableModel) viaggiSudPinTable.getModel();
+                    pinTableModel = (ViaggiPinTableModel) viaggiSudPinTable.getModel();
                     break;
                 default:
                     return;
@@ -720,7 +787,7 @@ public class MainFrame extends JFrame implements TableModelListener {
                 pinTable.getCellEditor().cancelCellEditing();
             }
 
-            Viaggio v = pinTableModel.removeRow(modelSelectedRow);
+            Viaggio v = pinTableModel.unpinRow(modelSelectedRow);
             logger.verbose("viaggiUnPinAction: element removed from table {}: {}", ViaggiTableModel.getTableModelName(pinTableModel), v.toString());
             tableModel.addRow(v);
 
@@ -751,6 +818,10 @@ public class MainFrame extends JFrame implements TableModelListener {
                 case SUD_REMOVE_ROW_COMMAND:
                 case SUD_ADD_ROW_COMMAND:
                     table = viaggiSudTable; break;
+                case NORD_PIN_REMOVE_COMMAND:
+                    table = viaggiNordPinTable; break;
+                case SUD_PIN_REMOVE_COMMAND:
+                    table = viaggiSudPinTable; break;
                 default:
                     return;
             }
@@ -765,14 +836,21 @@ public class MainFrame extends JFrame implements TableModelListener {
                     break;
                 case NORD_REMOVE_ROW_COMMAND:
                 case SUD_REMOVE_ROW_COMMAND:
+                case NORD_PIN_REMOVE_COMMAND:
+                case SUD_PIN_REMOVE_COMMAND:
+                    int secondsToWait = Integer.parseInt(Configuration.getInstance().getProperty(Configuration.UNDO_WAIT_SECONDS));
                     int selectedRow = table.getSelectedRow();
                     int selectedColumn = table.getSelectedColumn();
+                    String deleteSuccessMessage = strings.getString("mainframe.infofield.table.row.delete");
+                    String clickToCancelMessage = MessageFormat.format(
+                            strings.getString("mainframe.infofield.click.here.to.cancel"), secondsToWait
+                    );
 
                     logger.info("viaggiRowsAction: removing row {} from table {}...", selectedRow,
                             ViaggiTableModel.getTableModelName((ViaggiTableModel) table.getModel()));
 
                     if(selectedRow < 0) {
-                        logger.info("viaggiRowsAction: invalid row selected");
+                        logger.verbose("viaggiRowsAction: invalid row number ({}). Action ignored", selectedRow);
                         return;
                     }
 
@@ -780,12 +858,31 @@ public class MainFrame extends JFrame implements TableModelListener {
                         table.getCellEditor().cancelCellEditing();
                     }
 
+
                     Viaggio removed = ((ViaggiTableModel) table.getModel()).removeRow(selectedRow);
                     logger.verbose("viaggiRowsAction: element to remove from database: {}", removed.toString());
+
                     try {
                         logger.verbose("viaggiRowsAction: sending remove request to database...");
                         dbs.rimuoviViaggio(removed);
                         logger.info("viaggiRowsAction: element removed from database successfully!");
+                        infoTextField.setInfoMessage(deleteSuccessMessage + " " + clickToCancelMessage);
+                        Timer t = ViaggiUtils.executeAfter(secondsToWait * 1000, new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent event) {
+                                infoTextField.setInfoMessage(deleteSuccessMessage);
+                            }
+                        });
+                        infoTextField.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseClicked(MouseEvent e) {
+                                t.stop();
+                                logger.info("viaggiRowsAction: row deletion cancelled by user. Reinserting deleted row");
+                                removed.setId(-1); // row will be inserted into database only if id < 0
+                                ((ViaggiTableModel) table.getModel()).addRow(removed);
+                                infoTextField.setInfoMessage(strings.getString("mainframe.infofield.table.row.delete.cancelled"));
+                            }
+                        });
                     } catch (SQLException e) {
                         ((ViaggiTableModel) table.getModel()).addRow(removed);
                         logger.warn("viaggiRowsAction: database remove error logged in next line");
@@ -796,6 +893,13 @@ public class MainFrame extends JFrame implements TableModelListener {
                     break;
             }
 
+        }
+    };
+
+    private final ActionListener resetDefaultColumnsSize = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            formattaTabelle(null);
         }
     };
 
@@ -844,7 +948,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         public void actionPerformed(ActionEvent e) {
             logger.info("openConfigAction: opening frame...");
             SwingUtilities.invokeLater(
-                    () -> ConfigFrame.open(WindowConstants.DO_NOTHING_ON_CLOSE)
+                    () -> ConfigFrame.open(WindowConstants.DISPOSE_ON_CLOSE)
             );
         }
     };
@@ -852,7 +956,7 @@ public class MainFrame extends JFrame implements TableModelListener {
     private void init() throws SQLException {
         logger.verbose("init: creating frame icon...");
         this.setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
-        tableColumnModelListenerMap = new HashMap<>();
+//        tableColumnModelListenerMap = new HashMap<>();
 
         try {
             logger.info("init: connecting to database...");
@@ -907,8 +1011,8 @@ public class MainFrame extends JFrame implements TableModelListener {
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
 
-        //nordTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD, camions);
-//        sudTableModel = new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD);
+        //nordTableModel = new ViaggiTableModel(Consts.VIAGGI_NORD, camions);
+//        sudTableModel = new ViaggiTableModel(Consts.VIAGGI_SUD);
 
         northPanel = new JPanel(new BorderLayout());
         northPanel.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -958,6 +1062,13 @@ public class MainFrame extends JFrame implements TableModelListener {
                 null
         );
         northWestPanel.add(btnGoToLastDate);
+
+        JButton btnResetColumnsSize = ViaggiFrameUtils.newButton(
+                strings.getString("mainframe.button.reset.columns.size"),
+                resetDefaultColumnsSize,
+                null
+        );
+        northWestPanel.add(btnResetColumnsSize);
 
         lblDataSelezionata = ViaggiFrameUtils.newJLabel(
                 strings.getString("mainframe.label.date.selected"),
@@ -1049,8 +1160,8 @@ public class MainFrame extends JFrame implements TableModelListener {
         panel.add(ordiniSalitaAggiungiButton);
 
         ordiniSalitaTable = new OrdiniTable();
-        ordiniSalitaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
-        ordiniSalitaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+//        ordiniSalitaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+//        ordiniSalitaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         ordiniSalitaTable.setCellSelectionEnabled(true);
         ordiniSalitaTable.setModel(new OrdiniTableModel());
         ordiniSalitaTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
@@ -1092,8 +1203,8 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         ordiniDiscesaTable = new OrdiniTable();
         ordiniDiscesaTable.setCellSelectionEnabled(true);
-        ordiniDiscesaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        ordiniDiscesaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
+//        ordiniDiscesaTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+//        ordiniDiscesaTable.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         ordiniDiscesaTable.setModel(new OrdiniTableModel());
         ordiniDiscesaTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
@@ -1167,7 +1278,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         sudTablePanel = new JPanel(new BorderLayout(0, 0));
 //        tablePanel.add(sudTablePanel);
 
-        viaggiSudTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_SUD);
+        viaggiSudTable = new ViaggiJTable(Consts.TABLE_TYPES.VIAGGI_SUD);
 //        tablePanel.add(viaggiSudTable);
         viaggiSudTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
@@ -1219,7 +1330,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         sudTableScrollPane = new JScrollPane(viaggiSudTable);
         sudTableScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
-        viaggiSudPinTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_SUD);
+        viaggiSudPinTable = new ViaggiJTable(Consts.TABLE_TYPES.VIAGGI_SUD);
         viaggiSudPinTable.setTableHeader(null);
         viaggiSudPinTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         //TODO: viaggi sud pin table model definition goes here
@@ -1233,7 +1344,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         nordTablePanel = new JPanel(new BorderLayout(0, 0));
 //        tablePanel.add(nordTablePanel);
 
-        viaggiNordTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
+        viaggiNordTable = new ViaggiJTable(Consts.TABLE_TYPES.VIAGGI_NORD);
 //        tablePanel.add(viaggiNordTable);
         viaggiNordTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
         //TODO: viaggi nord table model definition goes here
@@ -1265,7 +1376,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         nordTableScrollPane.setBorder(BorderFactory.createEmptyBorder());
         //nordTablePanel.add(nordTableScrollPane, BorderLayout.CENTER);
 
-        viaggiNordPinTable = new ViaggiJTable(Consts.VIAGGI_TM_TYPE_NORD);
+        viaggiNordPinTable = new ViaggiJTable(Consts.TABLE_TYPES.VIAGGI_NORD);
 
 
         viaggiNordPinTable.setTableHeader(null);
@@ -1283,9 +1394,8 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         viaggiNordTable.getColumnModel().addColumnModelListener(nordTableColumnListener);
         viaggiSudTable.getColumnModel().addColumnModelListener(sudTableColumnListener);
-
-        tableColumnModelListenerMap.put(viaggiNordTable, nordTableColumnListener);
-        tableColumnModelListenerMap.put(viaggiSudTable, sudTableColumnListener);
+//        tableColumnModelListenerMap.put(viaggiNordTable, nordTableColumnListener);
+//        tableColumnModelListenerMap.put(viaggiSudTable, sudTableColumnListener);
 
         viaggiSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, nordTablePanel, sudTablePanel);
         viaggiSplitPane.setDividerSize(0);
@@ -1356,6 +1466,21 @@ public class MainFrame extends JFrame implements TableModelListener {
             logger.warn("mainframe: database last date retrieving error logged in next line");
             logDatabaseError(e);
         }
+
+        logger.verbose("Loading columns preferences...");
+        MainFrameColumnsSize mainFrameColumnsSize;
+        try {
+            CharSource columnsFileSource = Files.asCharSource(new File(ViaggiUtils.getColumnsPreferencesPath()), Charsets.UTF_8);
+            String columnsPreferencesJSON = columnsFileSource.read();
+            mainFrameColumnsSize = MainFrameColumnsSize.fromJson(columnsPreferencesJSON);
+        } catch (IOException exception) {
+            logger.warn("Columns preferences file error. ({})", exception.getMessage());
+            logger.warn("Will be loaded default configuration");
+            mainFrameColumnsSize = null;
+        }
+
+        formattaTabelle(mainFrameColumnsSize);
+        createTablesPopupMenu();
 /*        try {
             updateCamionList();
         }catch (SQLException e) {
@@ -1427,23 +1552,23 @@ public class MainFrame extends JFrame implements TableModelListener {
         logger.info("reloadTableModel: reloading viaggi table models...");
 
         logger.verbose("reloadTableModel: creating Viaggi NORD table model...");
-        viaggiNordTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_NORD));
+        viaggiNordTable.setModel(new ViaggiTableModel(Consts.TABLE_TYPES.VIAGGI_NORD));
         viaggiNordTable.getModel().addTableModelListener(this);
         viaggiNordTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
 
         logger.verbose("reloadTableModel: creating Viaggi SUD table model...");
-        viaggiSudTable.setModel(new ViaggiTableModel(Consts.VIAGGI_TM_TYPE_SUD));
+        viaggiSudTable.setModel(new ViaggiTableModel(Consts.TABLE_TYPES.VIAGGI_SUD));
         viaggiSudTable.getModel().addTableModelListener(this);
         viaggiSudTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
 
         logger.verbose("reloadTableModel: creating Viaggi NORD Pin table model...");
-        viaggiNordPinTable.setModel(new ViaggiPinTableModel(Consts.VIAGGI_TM_TYPE_NORD));
+        viaggiNordPinTable.setModel(new ViaggiPinTableModel(Consts.TABLE_TYPES.VIAGGI_NORD));
         viaggiNordPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
         ViaggiTableModel viaggiNordPinTableModel = (ViaggiTableModel) viaggiNordPinTable.getModel();
         viaggiNordPinTableModel.addTableModelListener(viaggiPinnedTableListener);
 
         logger.verbose("reloadTableModel: creating Viaggi SUD Pin table model...");
-        viaggiSudPinTable.setModel(new ViaggiPinTableModel(Consts.VIAGGI_TM_TYPE_SUD));
+        viaggiSudPinTable.setModel(new ViaggiPinTableModel(Consts.TABLE_TYPES.VIAGGI_SUD));
         viaggiSudPinTable.getColumnModel().getColumn(1).setCellRenderer(new ViaggiCarattCellRender());
         ViaggiTableModel viaggiSudPinTableModel = (ViaggiTableModel) viaggiSudPinTable.getModel();
         viaggiSudPinTableModel.addTableModelListener(viaggiPinnedTableListener);
@@ -1489,23 +1614,15 @@ public class MainFrame extends JFrame implements TableModelListener {
         viaggiNordPinTableModel.setData(nordPinned);
         viaggiNordPinTableModel.setCurrentDate(d);
 
+        // with setAutoCreateColumnsFromModel flag setted every time we create a new table model,
+        // columns width would be reset
+        // so after the first time Column Model is created automatically, we stop this behavior
+        // (we can -hopefully- think that the Column Model never change when a new table model is created)
+        viaggiNordTable.setAutoCreateColumnsFromModel(false);
+        viaggiSudTable.setAutoCreateColumnsFromModel(false);
+        viaggiNordPinTable.setAutoCreateColumnsFromModel(false);
+        viaggiSudPinTable.setAutoCreateColumnsFromModel(false);
 
-        List<RowSorter.SortKey> sortKeys = new ArrayList<>(1);
-        sortKeys.add(new RowSorter.SortKey(3, SortOrder.ASCENDING));
-        //TODO: table sorter not set when table is empty (Needs to add a row and reload date)
-        if(viaggiNordPinTable.getRowCount() > 0) {
-            viaggiNordPinTableSorter = new TableRowSorter<>(viaggiNordPinTable.getModel());
-            viaggiNordPinTable.setRowSorter(viaggiNordPinTableSorter);
-            viaggiNordPinTableSorter.setSortKeys(sortKeys);
-            viaggiNordPinTableSorter.sort();
-        }
-
-        if(viaggiSudPinTable.getRowCount() > 0) {
-            viaggiSudPinTableSorter = new TableRowSorter<>(viaggiSudPinTable.getModel());
-            viaggiSudPinTable.setRowSorter(viaggiSudPinTableSorter);
-            viaggiSudPinTableSorter.setSortKeys(sortKeys);
-            viaggiSudPinTableSorter.sort();
-        }
         logger.info("reloadTableModel: viaggi table models loaded successfully!");
     }
 
@@ -1597,10 +1714,11 @@ public class MainFrame extends JFrame implements TableModelListener {
             ThreadContext.put("currentDate", ViaggiUtils.createStringFromDate(currentDate, true));
             selectedDateLbl.setText(ViaggiUtils.createStringFromDate(currentDate, false));
 
-            formattaTabelle();
+//            formattaTabelle();
             //updateCamionList();
             resizePinTables();
             logger.info("loadDate: date loaded");
+            infoTextField.setInfoMessage(strings.getString("mainframe.infofield.welcome"));
         } catch (SQLException e) {
             logger.warn("loadDate: load date database error logged in next line");
             logDatabaseError(e);
@@ -1618,7 +1736,6 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
         if(d != null){
             loadDate(d, MainFrame.RELOAD_STANDARD);
-
         }else{
             formattedTextField.setBackground(Color.RED);
         }
@@ -1694,7 +1811,7 @@ public class MainFrame extends JFrame implements TableModelListener {
                                     onError(new IllegalArgumentException("Invalid id returned from database"));
                                 }
 
-                                JTable t = tm.getType() == Consts.VIAGGI_TM_TYPE_NORD ? viaggiNordTable : viaggiSudTable;
+                                JTable t = tm.getType() == Consts.TABLE_TYPES.VIAGGI_NORD ? viaggiNordTable : viaggiSudTable;
                                 ViaggiFrameUtils.selectTableCell(t, row, 0);
 
                                 notifyRowInserted("Viaggi " + inserted.getPosizione(), ""+newId, inserted.getData().toString());
@@ -1709,18 +1826,116 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
     }
 
-    private void formattaTabelle(){
+    private void createTablesPopupMenu(){
+        // https://stackoverflow.com/questions/16743427/jtable-right-click-popup-menu
+
+        // Nord Table
+        JPopupMenu nordPopupMenu = new JPopupMenu();
+        nordPopupMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.move.down"),
+                viaggiPinAction,
+                NORD_PIN_COMMAND
+        ));
+        nordPopupMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.remove"),
+                viaggiRowsAction,
+                NORD_REMOVE_ROW_COMMAND
+        ));
+        nordPopupMenu.addPopupMenuListener(new TablePopupMenuListener(viaggiNordTable));
+        viaggiNordTable.setComponentPopupMenu(nordPopupMenu);
+
+        // Sud Table
+        JPopupMenu sudPopupMenu = new JPopupMenu();
+        sudPopupMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.move.down"),
+                viaggiPinAction,
+                SUD_PIN_COMMAND
+        ));
+        sudPopupMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.remove"),
+                viaggiRowsAction,
+                SUD_REMOVE_ROW_COMMAND
+        ));
+        sudPopupMenu.addPopupMenuListener(new TablePopupMenuListener(viaggiSudTable));
+        viaggiSudTable.setComponentPopupMenu(sudPopupMenu);
+
+        //Nord Pin Table
+        JPopupMenu nordPinMenu = new JPopupMenu();
+        nordPinMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.move.up"),
+                viaggiUnPinAction,
+                NORD_UNPIN_COMMAND
+        ));
+        nordPinMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.remove"),
+                viaggiRowsAction,
+                NORD_PIN_REMOVE_COMMAND
+        ));
+        nordPinMenu.addPopupMenuListener(new TablePopupMenuListener(viaggiNordPinTable));
+        viaggiNordPinTable.setComponentPopupMenu(nordPinMenu);
+
+        //Sud Pin Table
+        JPopupMenu sudPinMenu = new JPopupMenu();
+        sudPinMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.move.up"),
+                viaggiUnPinAction,
+                SUD_UNPIN_COMMAND
+        ));
+        sudPinMenu.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.remove"),
+                viaggiRowsAction,
+                SUD_PIN_REMOVE_COMMAND
+        ));
+        sudPinMenu.addPopupMenuListener(new TablePopupMenuListener(viaggiSudPinTable));
+        viaggiSudPinTable.setComponentPopupMenu(sudPinMenu);
+
+        // Oridini salita
+        JPopupMenu ordiniPopup = new JPopupMenu();
+        ordiniPopup.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.remove"),
+                removeOrderAction,
+                ORDINI_SALITA_COMMAND
+        ));
+        ordiniPopup.addPopupMenuListener(new TablePopupMenuListener(ordiniSalitaTable));
+        ordiniSalitaTable.setComponentPopupMenu(ordiniPopup);
+
+        // Oridini discesa
+        ordiniPopup = new JPopupMenu();
+        ordiniPopup.add(ViaggiFrameUtils.newMenuItemButton(
+                strings.getString("mainframe.menu.button.remove"),
+                removeOrderAction,
+                ORDINI_DISCESA_COMMAND
+        ));
+        ordiniPopup.addPopupMenuListener(new TablePopupMenuListener(ordiniDiscesaTable));
+        ordiniDiscesaTable.setComponentPopupMenu(ordiniPopup);
+    }
+
+
+    private void formattaTabelle(@Nullable MainFrameColumnsSize mainFrameColumnsSize){
+        if(mainFrameColumnsSize == null) {
+            try {
+                String defaultColumnsPreferencesJSON = Files.asCharSource(
+                        new File(ViaggiUtils.getAppPath("DefaultColumnsPreferences.json")),
+                        Charsets.UTF_8
+                ).read();
+                mainFrameColumnsSize = MainFrameColumnsSize.fromJson(defaultColumnsPreferencesJSON);
+            } catch (IOException e) {
+                logger.warn("formattaTabelle: loading DefaultColumnsPreferences.json failed ({})", e.getMessage());
+                mainFrameColumnsSize = new MainFrameColumnsSize();
+            }
+        }
+
         //viaggiSplitPane.setDividerLocation(0.5);
         //TODO: persist user columns width preferences (maybe per date?)
         viaggiSplitPane.setResizeWeight(0.5);
 
-        viaggiNordTable.doTableLayout();
-        viaggiSudTable.doTableLayout();
-        viaggiNordPinTable.doTableLayout();
-        viaggiSudPinTable.doTableLayout();
+        viaggiNordTable.doTableLayout(mainFrameColumnsSize.viaggiNord);
+        viaggiSudTable.doTableLayout(mainFrameColumnsSize.viaggiSud);
+        viaggiNordPinTable.doTableLayout(mainFrameColumnsSize.viaggiNord);
+        viaggiSudPinTable.doTableLayout(mainFrameColumnsSize.viaggiSud);
 
-        ordiniDiscesaTable.doTableLayout();
-        ordiniSalitaTable.doTableLayout();
+        ordiniDiscesaTable.doTableLayout(mainFrameColumnsSize.ordiniDiscesa);
+        ordiniSalitaTable.doTableLayout(mainFrameColumnsSize.ordiniSalita);
     }
 
     private void resizePinTables() {
@@ -1753,15 +1968,31 @@ public class MainFrame extends JFrame implements TableModelListener {
                     logger.info("windowClosing: closing database connection...");
                     dbs.closeConnection();
                     logger.verbose("windowClosing: closing database connection success!");
+
+                    logger.verbose("windowsClosing: Saving columns preferences...");
+                    MainFrameColumnsSize mainFrameColumnsSizePreferred = computeMainframeColumnsSize();
+                    String JSONEncode = MainFrameColumnsSize.toJson(mainFrameColumnsSizePreferred);
+                    Files.asCharSink(new File(ViaggiUtils.getColumnsPreferencesPath()), Charsets.UTF_8)
+                            .write(JSONEncode);
                 } catch (SQLException e) {
                     logger.warn("windowsClosing: disconnection error logged in next line");
                     logger.error(e.getMessage(), e);
                     e.printStackTrace();
+                } catch (IOException e) {
+                    logger.warn("windowsClosing: column preferences write error logged in next line");
+                    logger.error(e.getMessage(), e);
                 }
             }
-
         });
+    }
 
+    private MainFrameColumnsSize computeMainframeColumnsSize() {
+        return new MainFrameColumnsSize(
+                viaggiNordTable.getColumnsSize(),
+                viaggiSudTable.getColumnsSize(),
+                ordiniSalitaTable.getColumnsSize(),
+                ordiniDiscesaTable.getColumnsSize()
+        );
     }
 
     private void logDatabaseError(SQLException e){
@@ -1934,16 +2165,12 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
     }
 
-/*
-    public MessageJLabel getMessageField() {
-        return infoTextField;
-    }
-    */
+
     class ColumnChangeListener implements TableColumnModelListener {
         JTable sourceTable;
         JTable targetTable;
 
-        public ColumnChangeListener(JTable source, JTable target) {
+        ColumnChangeListener(JTable source, JTable target) {
             this.sourceTable = source;
             this.targetTable = target;
         }
@@ -1956,15 +2183,58 @@ public class MainFrame extends JFrame implements TableModelListener {
         public void columnMarginChanged(ChangeEvent e) {
             TableColumnModel sourceModel = sourceTable.getColumnModel();
             TableColumnModel targetModel = targetTable.getColumnModel();
-            TableColumnModelListener listener = tableColumnModelListenerMap.get(targetTable);
 
-            targetModel.removeColumnModelListener(listener);
+            // NB: uncomment next lines (and all other tableColumnModelListenerMap uses in code if you want also
+            // the inverse trigger (if pin table is resized then resize normal table)
+//            TableColumnModelListener listener = tableColumnModelListenerMap.get(targetTable);
+
+//            targetModel.removeColumnModelListener(listener);
 
             for (int i = 0; i < sourceModel.getColumnCount(); i++) {
                 targetModel.getColumn(i).setPreferredWidth(sourceModel.getColumn(i).getWidth());
             }
 
-            targetModel.addColumnModelListener(listener);
+//            targetModel.addColumnModelListener(listener);
+
+        }
+    }
+
+    class TablePopupMenuListener implements PopupMenuListener {
+        JTable targetTable;
+
+        public TablePopupMenuListener(JTable targetTable) {
+            this.targetTable = targetTable;
+        }
+
+
+        @Override
+        public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+            SwingUtilities.invokeLater(new Runnable() {
+                @Override
+                public void run() {
+                    int rowAtPoint = targetTable.rowAtPoint(SwingUtilities.convertPoint(
+                            (JPopupMenu) e.getSource(), new Point(0, 0), targetTable)
+                    );
+                    int columnAtPoint = targetTable.columnAtPoint(SwingUtilities.convertPoint(
+                            (JPopupMenu) e.getSource(), new Point(0, 0), targetTable)
+                    );
+
+                    if (rowAtPoint > -1 && columnAtPoint > -1) {
+//                        targetTable.setRowSelectionInterval(rowAtPoint, rowAtPoint);
+                        ViaggiFrameUtils.selectTableCell(targetTable, rowAtPoint, columnAtPoint);
+                    }
+                }
+            });
+        }
+
+        @Override
+        public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+
+        }
+
+        @Override
+        public void popupMenuCanceled(PopupMenuEvent e) {
+
         }
     }
 }

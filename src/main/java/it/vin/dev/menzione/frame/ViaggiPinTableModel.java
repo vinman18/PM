@@ -29,6 +29,11 @@ public class ViaggiPinTableModel extends ViaggiTableModel {
         return removed;
     }
 
+    public Viaggio unpinRow(int row) {
+        getElementAt(row).setPinned(false);
+        return removeRow(row);
+    }
+
     public Viaggio getRemovedRow(int row) {
         return removedElements.remove(row);
     }

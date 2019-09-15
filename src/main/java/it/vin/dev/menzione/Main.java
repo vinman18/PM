@@ -9,6 +9,8 @@ import javax.swing.*;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
 import java.awt.*;
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.UUID;
 
 public class Main {
@@ -26,6 +28,7 @@ public class Main {
 
     public static void main(String[] args) {
         logger.verbose("Avvio applicazione...");
+        logger.info(new GregorianCalendar().getTimeZone().toString());
 
         System.out.println("--Ricorda di aggiornare dbversion (sia sull'aplicazione sia sul db)"
                 + "se fai modifiche al database!!--");
@@ -48,7 +51,7 @@ public class Main {
 
         try {
             logger.info("Loading config file...");
-            ViaggiUtils.checkAndCreateConfigFile();
+            ViaggiUtils.checkAndCreateAppFiles();
         } catch (IOException e) {
             logger.fatal(e);
         }
@@ -90,7 +93,7 @@ public class Main {
                         String id = UUID.randomUUID().toString();
                         client = new DatabaseClient(id, conf.getUser());
                         DatabaseHelperChannel helper = DatabaseHelperChannel.getInstance();
-                        helper.connect(client);
+//                        helper.connect(client);
                         logger.info("Remote DatabaseHelper connected");
                    /* } catch (NotBoundException | RemoteException e) {
                         logger.debug("Connection with remote DatabaseHelper failed. " + e.getMessage(), e);

@@ -3,7 +3,6 @@ package it.vin.dev.menzione.frame;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.rmi.RemoteException;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.util.List;
@@ -404,8 +403,8 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         //Creo i camion
         camions = dbu.getCamion();
 
-        ViaggiNuoviTableModel nordTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_NORD);
-        ViaggiNuoviTableModel sudTM = new ViaggiNuoviTableModel(Consts.VIAGGI_TM_TYPE_SUD);
+        ViaggiNuoviTableModel nordTM = new ViaggiNuoviTableModel(Consts.TABLE_TYPES.VIAGGI_NORD);
+        ViaggiNuoviTableModel sudTM = new ViaggiNuoviTableModel(Consts.TABLE_TYPES.VIAGGI_SUD);
         viaggiNordTable.setModel(nordTM);
         viaggiSudTable.setModel(sudTM);
         viaggiNordTable.getModel().addTableModelListener(this);
@@ -594,14 +593,14 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         ViaggiNuoviTableModel tm = (ViaggiNuoviTableModel) e.getSource();
         if(e.getType() == TableModelEvent.UPDATE){
             //Viaggio v = tm.getElementAt(row);
-            if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){  //TODO: perchè questo if?
+            if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_NORD){  //TODO: perchè questo if?
                 if(col==1){
                     Camion c = tm.getElementAt(row).getCamion();
-                    if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
+                    if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_NORD){
                         if(((ViaggiNuoviTableModel) viaggiSudTable.getModel()).existsCamion(c) > 0) {
                             ((ViaggiNuoviTableModel) viaggiSudTable.getModel()).replaceCaratt(c.getTarga(), c.getCaratteristiche());
                         }
-                    }else if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
+                    }else if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_SUD){
                         if(((ViaggiNuoviTableModel) viaggiNordTable.getModel()).existsCamion(c) > 0) {
                             ((ViaggiNuoviTableModel) viaggiNordTable.getModel()).replaceCaratt(c.getTarga(), c.getCaratteristiche());
                         }
@@ -609,7 +608,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
                 }
             }
         } else if(e.getType() == TableModelEvent.INSERT) {
-            if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
+            if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_NORD){
                 viaggiNordTable.requestFocus();
                 viaggiNordTable.changeSelection(row, 0, false, false);
                 String t = tm.getElementAt(viaggiNordTable.getSelectedRow()).getCamion().getTarga();
@@ -639,10 +638,10 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
 
             if(result){
                 Msg.info(this, "Data aggiunta correttamente!");
-                DatabaseHelperChannel.getInstance().notifyDateAdded(newLastDate.toString());
                 //source.loadDate(newLastDate, MainFrame.RELOAD_RESETCONNECTION);
                 ViaggiEventsBus.getInstance().post(new DateAddEvent(newLastDate, DateAddEvent.DateAddEventSource.ADD_DATE_FRAME));
                 dbu.closeConnection();
+                DatabaseHelperChannel.getInstance().notifyDateAdded(newLastDate.toString());
                 dispose();
             } else {
                 Msg.error(this, "Errore nella query al database. I dati non sono stati modificati");
@@ -653,6 +652,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         } catch (DatabaseHelperException e) {
             logger.debug(e);
             logger.warn(e.getMessage());
+            dispose();
         }
 
     }

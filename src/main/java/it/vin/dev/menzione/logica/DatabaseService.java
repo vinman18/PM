@@ -26,6 +26,14 @@ public class DatabaseService {
             throw new SQLException("Versione del database non compatibile con questa versione del programma");
         }
 
+		String query = "SELECT now()";
+		PreparedStatement st = conn.prepareStatement(query);
+
+		ResultSet rs = st.executeQuery();
+		Date result = null;
+		while(rs.next()){
+			System.out.println(rs.getString(1));
+		}
 		return dbs;
 	}
 
@@ -45,7 +53,7 @@ public class DatabaseService {
         String port = conf.getDbPort();
         String dbName = conf.getDbName();
 
-		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName + "?serverTimezone=UTC";
+		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName + "?5serverTimezone=Europe/Rome";
 		String user = conf.getDbUser();
 		String password = conf.getDbPassword();
 
@@ -64,8 +72,6 @@ public class DatabaseService {
 	    if(!conn.isClosed()) {
 	        throw new SQLException("Connection already opened");
         }
-
-
 
         this.conn = createConnection();
     }
@@ -187,7 +193,8 @@ public class DatabaseService {
 		Date data = v.getData();
 		int litri = v.getLitriB();
 		boolean selezionato = v.isSelezionato();
-		String query = "INSERT INTO Viaggio(Targa,Caratt,Autista,Posizione,Note,Data,Selezionato,Litri) VALUES (?,?,?,?,?,?,?,?)";
+		boolean isPinned = v.isPinned();
+		String query = "INSERT INTO Viaggio(Targa,Caratt,Autista,Posizione,Note,Data,Selezionato,Litri, Pinned) VALUES (?,?,?,?,?,?,?,?,?)";
 
 		PreparedStatement st = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
 
@@ -199,6 +206,7 @@ public class DatabaseService {
 		st.setDate(6, data);
 		st.setBoolean(7, selezionato);
 		st.setInt(8, litri);
+		st.setBoolean(9, isPinned);
 
 		st.executeUpdate();
 		long generatedKey;

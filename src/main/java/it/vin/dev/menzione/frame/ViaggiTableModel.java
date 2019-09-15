@@ -1,16 +1,12 @@
 package it.vin.dev.menzione.frame;
 
 import java.sql.Date;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Vector;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.AbstractTableModel;
 
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.logica.*;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class ViaggiTableModel extends AbstractTableModel {
 
@@ -45,13 +41,13 @@ public class ViaggiTableModel extends AbstractTableModel {
 	}
 
 	public static String getViaggioColumnNameByIndex(ViaggiTableModel model, int col) {
-		String[] colums = model.getType() == Consts.VIAGGI_TM_TYPE_NORD ? COL_NORD : COL_SUD;
+		String[] colums = model.getType() == Consts.TABLE_TYPES.VIAGGI_NORD ? COL_NORD : COL_SUD;
 
 		return colums[col];
 	}
 
 	public static String getTableModelName(ViaggiTableModel model) {
-	    return "Viaggi " + (model.getType() == Consts.VIAGGI_TM_TYPE_NORD ? "NORD" : "SUD");
+	    return "Viaggi " + (model.getType() == Consts.TABLE_TYPES.VIAGGI_NORD ? "NORD" : "SUD");
     }
 
 	public Vector<Viaggio> getData(){
@@ -61,7 +57,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 	public ViaggiTableModel(int type) {
 		this.type = type;
 		viaggi = new Vector<>();
-		if(type == Consts.VIAGGI_TM_TYPE_NORD){
+		if(type == Consts.TABLE_TYPES.VIAGGI_NORD){
 			colonne = COL_NORD;
 		}else{
 			colonne = COL_SUD;
@@ -123,7 +119,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 	public Object getValueAt(int row, int col) {
 		Viaggio v = viaggi.elementAt(row);
 		try {
-			if(type == Consts.VIAGGI_TM_TYPE_NORD){
+			if(type == Consts.TABLE_TYPES.VIAGGI_NORD){
 				switch(col){
 				case 0: return v.getCamion().getTarga();
 				case 1: return v.getCamion().getCaratteristiche();
@@ -131,7 +127,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 				case 3: return v.getNote();
 				case 4: return v.isSelezionato();
 				}
-			}else if(type == Consts.VIAGGI_TM_TYPE_SUD){
+			}else if(type == Consts.TABLE_TYPES.VIAGGI_SUD){
 				switch(col){
 				case 0: return v.getCamion().getTarga();
 				case 1: return v.getCamion().getCaratteristiche();
@@ -149,7 +145,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 
 	@Override
 	public void setValueAt(Object value, int row, int col) {
-		if(type == Consts.VIAGGI_TM_TYPE_NORD){
+		if(type == Consts.TABLE_TYPES.VIAGGI_NORD){
 			if(col == 0){
 				Camion c = CamionListCache.getInstance().getElementByTarga(value.toString());
 				viaggi.elementAt(row).setCamion(c);
@@ -197,7 +193,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 	public void addRow(Viaggio v) {
 		if(v == null){
 			Viaggio nuovo = new Viaggio();
-			String posizione = type == Consts.VIAGGI_TM_TYPE_NORD ? Viaggio.NORD : Viaggio.SUD;
+			String posizione = type == Consts.TABLE_TYPES.VIAGGI_NORD ? Viaggio.NORD : Viaggio.SUD;
 			nuovo.setPosizione(posizione);
 			nuovo.setData(currentDate);
 			viaggi.addElement(nuovo);
@@ -215,7 +211,7 @@ public class ViaggiTableModel extends AbstractTableModel {
 		return rimosso;
 	}
 
-    public int existsCamion(Camion c){
+    int existsCamion(Camion c){
         int result = 0;
         for(Viaggio v : viaggi){
             if(v.getCamion().getTarga().compareTo(c.getTarga()) == 0)

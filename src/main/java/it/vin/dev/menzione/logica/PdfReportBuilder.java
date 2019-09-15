@@ -154,10 +154,10 @@ public class PdfReportBuilder {
             Vector<Viaggio> viaggi = tm.getData();
 
             PdfPTable pdfTable=null;
-            if(tm.getType() == Consts.VIAGGI_TM_TYPE_NORD){
+            if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_NORD){
                 float[] larghezzaColonne = {1.5f,3f,3f,5f,1f};
                 pdfTable = new PdfPTable(larghezzaColonne);
-            }else if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
+            }else if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_SUD){
                 float[] larghezzaColonne = {1.5f,3f,3f,5f,1f,1f};
                 pdfTable = new PdfPTable(larghezzaColonne);
             }
@@ -184,7 +184,7 @@ public class PdfReportBuilder {
             noteCell.setBackgroundColor(GrayColor.DARK_GRAY);
             pdfTable.addCell(noteCell);
 
-            if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
+            if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_SUD){
 
                 PdfPCell litriCell = new PdfPCell(new Phrase("Litri",f));
                 litriCell.setHorizontalAlignment(Element.ALIGN_CENTER);
@@ -208,7 +208,7 @@ public class PdfReportBuilder {
 
                 PdfPCell litri=null;
 
-                if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
+                if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_SUD){
                     litri = new PdfPCell(new Phrase(""+(v.getLitriB())));
                 }
 
@@ -227,7 +227,7 @@ public class PdfReportBuilder {
                 pdfTable.addCell(c3);
                 pdfTable.addCell(c4);
 
-                if(tm.getType() == Consts.VIAGGI_TM_TYPE_SUD){
+                if(tm.getType() == Consts.TABLE_TYPES.VIAGGI_SUD){
                     pdfTable.addCell(litri);
                 }
 

@@ -1,10 +1,8 @@
 package it.vin.dev.menzione.frame;
 
-import java.util.List;
 import java.util.Vector;
 
 import it.vin.dev.menzione.Consts;
-import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.Camion;
 import it.vin.dev.menzione.logica.CamionListCache;
 import it.vin.dev.menzione.logica.Viaggio;
@@ -17,7 +15,7 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 
 	public ViaggiNuoviTableModel(int type) {
 		super(type);
-		if(type == Consts.VIAGGI_TM_TYPE_NORD){
+		if(type == Consts.TABLE_TYPES.VIAGGI_NORD){
 			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note"};
 		}else{
 			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", "Litri"};
@@ -27,7 +25,7 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 	public ViaggiNuoviTableModel(Vector<Viaggio> viaggi, int type) {
 		super(viaggi, type);
 
-		if(type == Consts.VIAGGI_TM_TYPE_NORD){
+		if(type == Consts.TABLE_TYPES.VIAGGI_NORD){
 			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note"};
 		}else{
 			colonne = new String[]{"Targa", "Caratteristiche", "Autista", "Note", "Litri"};
@@ -53,7 +51,7 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 	public Object getValueAt(int row, int col) {
 		Viaggio v = viaggi.elementAt(row);
 		try {
-			if(getType() == Consts.VIAGGI_TM_TYPE_NORD){
+			if(getType() == Consts.TABLE_TYPES.VIAGGI_NORD){
 				switch(col){
 				case 0: return v.getCamion().getTarga();
 				case 1: return v.getCamion().getCaratteristiche();
@@ -77,7 +75,7 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 
 	@Override
 	public void setValueAt(Object value, int row, int col){
-		if(getType() == Consts.VIAGGI_TM_TYPE_NORD){
+		if(getType() == Consts.TABLE_TYPES.VIAGGI_NORD){
 			if(col == 0){
 				Camion c = CamionListCache.getInstance().getElementByTarga(value.toString());
 				viaggi.elementAt(row).setCamion(c);
@@ -89,7 +87,7 @@ public class ViaggiNuoviTableModel extends ViaggiTableModel {
 			} else if(col == 1){
 				viaggi.elementAt(row).getCamion().setCaratteristiche(value.toString());
 			}
-		}else if(getType() == Consts.VIAGGI_TM_TYPE_SUD){
+		}else if(getType() == Consts.TABLE_TYPES.VIAGGI_SUD){
 			if(col == 0){
 				Camion c = CamionListCache.getInstance().getElementByTarga(value.toString());
 				viaggi.elementAt(row).setCamion(c);

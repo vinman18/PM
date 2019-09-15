@@ -37,6 +37,17 @@ public class ViaggiFrameUtils {
         return button;
     }
 
+    public static JMenuItem newMenuItemButton(String text, ActionListener action, @Nullable String actionCommand) {
+        JMenuItem button = new JMenuItem(text);
+        button.addActionListener(action);
+
+        if(actionCommand != null) {
+            button.setActionCommand(actionCommand);
+        }
+
+        return button;
+    }
+
     public static JButton newIconButton(String resourcePath, String alternateText, ActionListener action, @Nullable String actionCommand) {
         JButton button = new JButton();
         try {
