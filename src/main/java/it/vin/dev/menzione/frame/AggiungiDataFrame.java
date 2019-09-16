@@ -5,6 +5,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.sql.Date;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Vector;
 
@@ -14,17 +16,24 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.TableColumn;
+import javax.swing.text.MaskFormatter;
 
+import com.github.lgooddatepicker.components.DatePicker;
+import com.github.lgooddatepicker.components.DatePickerSettings;
+import com.github.lgooddatepicker.optionalusertools.DateVetoPolicy;
 import it.vin.dev.menzione.Consts;
 import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.database_helper.DatabaseHelperException;
 import it.vin.dev.menzione.events.DateAddEvent;
+import it.vin.dev.menzione.events.DateEventSource;
 import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.main_frame.CustomDateTextField;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.logica.DatabaseService;
+import it.vin.dev.menzione.main_frame.DatePickerExistingDatesHighlightPolicy;
+import it.vin.dev.menzione.main_frame.FormattedTextFieldDateChangeListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -185,11 +194,36 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
         JLabel lblInserisciData = new JLabel("Inserisci data:");
         headerPanel.add(lblInserisciData);
 
-        frmtdtxtfldData = new CustomDateTextField();
+        try {
+            frmtdtxtfldData = new CustomDateTextField(new MaskFormatter("##/##/####"));
+        } catch (ParseException e) {
+            logger.error(e);
+            frmtdtxtfldData = new JFormattedTextField();
+        }
+
         frmtdtxtfldData.setFocusTraversalKeysEnabled(false);
         frmtdtxtfldData.addKeyListener(dateFieldKeyListener);
 
         headerPanel.add(frmtdtxtfldData);
+
+        DatePickerSettings datePickerSettings = new DatePickerSettings();
+        DatePicker datePicker = new DatePicker(datePickerSettings);
+        datePicker.addDateChangeListener(new FormattedTextFieldDateChangeListener(frmtdtxtfldData));
+        datePicker.setDate(LocalDate.now().plusDays(1));
+        JButton datePickerBtn = datePicker.getComponentToggleCalendarButton();
+        datePickerBtn.setText("");
+        datePickerBtn.setIcon(ViaggiFrameUtils.getIcon("/Icons/calendar16.png"));
+        datePickerSettings.setVisibleDateTextField(false);
+        datePickerSettings.setGapBeforeButtonPixels(0);
+        datePickerSettings.setSizeDatePanelMinimumHeight((int) (datePickerSettings.getSizeDatePanelMinimumHeight() * 1.8));
+        datePickerSettings.setSizeDatePanelMinimumWidth((int) (datePickerSettings.getSizeDatePanelMinimumWidth() * 1.8));
+        datePickerSettings.setVetoPolicy(date -> {
+            if(date.isBefore(LocalDate.now())) {
+                return false;
+            }
+            return true;
+        });
+        headerPanel.add(datePicker);
 
         JPanel centerPanel = new JPanel(new GridBagLayout());
         contentPane.add(centerPanel, BorderLayout.CENTER);
@@ -639,7 +673,7 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             if(result){
                 Msg.info(this, "Data aggiunta correttamente!");
                 //source.loadDate(newLastDate, MainFrame.RELOAD_RESETCONNECTION);
-                ViaggiEventsBus.getInstance().post(new DateAddEvent(newLastDate, DateAddEvent.DateAddEventSource.ADD_DATE_FRAME));
+                ViaggiEventsBus.getInstance().post(new DateAddEvent(newLastDate, DateEventSource.THIS_APPLICATION));
                 dbu.closeConnection();
                 DatabaseHelperChannel.getInstance().notifyDateAdded(newLastDate.toString());
                 dispose();

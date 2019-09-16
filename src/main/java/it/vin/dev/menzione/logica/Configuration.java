@@ -10,50 +10,16 @@ import java.util.Properties;
 
 public class Configuration {
 
-    /*public Configuration() {
-    }
-
-    public static String ip;
-    public static String user;
-    public static String password;
-    public static String logfile;
-    public static final int DBVERSION = 3;
-    public static final String PROG_VERSION = "1.1b1";
-
-    public static String getLogfile() {
-        return logfile;
-    }
-    public static void setLogfile(String logfile) {
-        Configuration.logfile = logfile;
-    }
-    public static String getLocation() {
-        return ip;
-    }
-    public static void setIp(String ip) {
-        Configuration.ip = ip;
-    }
-    public static String getDbUser() {
-        return user;
-    }
-    public static void setUser(String user) {
-        Configuration.user = user;
-    }
-    public static String getDbPassword() {
-        return password;
-    }
-    public static void setPassword(String password) {
-        Configuration.password = password;
-    }
-    */
-    public static final String USER =               "local.user";
-    public static final String DB_NAME =            "db.name";
-    public static final String DB_LOCATION =        "db.location";
-    public static final String DB_PORT =            "db.port";
-    public static final String DB_USER =            "db.user";
-    public static final String DB_PASSWORD =        "db.password";
-    public static final String DBHELPER_HOST =      "dbhelper.host";
-    public static final String DBHELPER_PORT =      "dbhelper.port";
-    public static final String UNDO_WAIT_SECONDS =  "mainframe.undo.wait.secs";
+    public static final String USER =                   "local.user";
+    public static final String DB_NAME =                "db.name";
+    public static final String DB_LOCATION =            "db.location";
+    public static final String DB_PORT =                "db.port";
+    public static final String DB_USER =                "db.user";
+    public static final String DB_PASSWORD =            "db.password";
+    public static final String DBHELPER_HOST =          "dbhelper.host";
+    public static final String DBHELPER_PORT =          "dbhelper.port";
+    public static final String UNDO_WAIT_SECONDS =      "undo.wait.secs";
+    public static final String EXISTING_DATES_LIMIT =   "existing.dates.limit";
 
     private Properties props;
 

@@ -3,14 +3,25 @@ package it.vin.dev.menzione;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Date;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -18,12 +29,15 @@ import java.util.ResourceBundle;
 public class ViaggiUtils {
 
     private static Logger logger = LogManager.getLogger(ViaggiUtils.class);
-    private final static String userHome = System.getProperty("user.home");
+//    private final static String userHome = System.getProperty("user.home");
+    private final static String LOCAL_APP_DATA = System.getenv().get("LOCALAPPDATA");
+
+    private static final String AES_KEY_STRING = "DnyzRUcQuZ4yy68X";
+    private static final Key AES_KEY = new SecretKeySpec(AES_KEY_STRING.getBytes(), "AES");
+
 
     public static String getAppPath() {
-        String appPath = userHome + "\\AppData\\Local\\GestioneViaggi\\";
-
-        return appPath.replace("\\", File.separator);
+        return LOCAL_APP_DATA + File.separator + "GestioneViaggi" + File.separator;
     }
 
     public static String getAppPath(String relativePath) {
@@ -96,8 +110,8 @@ public class ViaggiUtils {
                 logger.info("{} file not found. Copying default file in {}", file, destinationFile.getAbsolutePath());
 
                 Files.copy(getResourceAsStream(resourceFilePath),
-                    destinationFile.toPath(),
-                    StandardCopyOption.REPLACE_EXISTING);
+                        destinationFile.toPath(),
+                        StandardCopyOption.REPLACE_EXISTING);
             }
         }
     }
@@ -159,11 +173,54 @@ public class ViaggiUtils {
         return dat;
     }
 
+    public static String createStringFromDate(java.util.Date date, String separator) {
+        String dateString = createStringFromDate(date, true);
+        return dateString.replace("-", separator);
+    }
+
+    public static java.util.Date convertToDateViaInstant(LocalDate dateToConvert) {
+        return java.util.Date.from(dateToConvert.atStartOfDay()
+                .atZone(ZoneId.systemDefault())
+                .toInstant());
+    }
+
     public static Timer executeAfter(int milliseconds, ActionListener actionListener) {
         Timer t = new Timer(milliseconds, actionListener);
         t.setRepeats(false);
         t.start();
         return t;
+    }
+
+    public static Color adjustAlpha(Color color, float factor) {
+        int alpha = Math.round(color.getAlpha() * factor);
+        int red = color.getRed();
+        int green = color.getGreen();
+        int blue = color.getBlue();
+        return new Color(red, green, blue, alpha);
+    }
+
+    public static String encrypt(String str) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.ENCRYPT_MODE, AES_KEY);
+            return new String(cipher.doFinal(str.getBytes()));
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+            e.printStackTrace();
+            logger.warn("Cipher exception in encrypt method", e);
+        }
+        return null;
+    }
+
+    public static String decrypt(String encryptedStr) {
+        try {
+            Cipher cipher = Cipher.getInstance("AES");
+            cipher.init(Cipher.DECRYPT_MODE, AES_KEY);
+            return new String(cipher.doFinal(encryptedStr.getBytes()));
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException e) {
+            e.printStackTrace();
+            logger.warn("Cipher exception in decrypt method", e);
+        }
+        return null;
     }
 
     public static URL getMainIcon() {

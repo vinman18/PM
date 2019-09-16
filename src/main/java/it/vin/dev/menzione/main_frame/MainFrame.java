@@ -1,5 +1,7 @@
 package it.vin.dev.menzione.main_frame;
 
+import com.github.lgooddatepicker.components.DatePicker;
+import com.github.lgooddatepicker.components.DatePickerSettings;
 import com.google.common.base.Charsets;
 import com.google.common.eventbus.Subscribe;
 import com.google.common.io.CharSource;
@@ -11,6 +13,8 @@ import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.database_helper.DatabaseHelperException;
 import it.vin.dev.menzione.events.DateAddEvent;
+import it.vin.dev.menzione.events.DateDeleteEvent;
+import it.vin.dev.menzione.events.DateEventSource;
 import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.events.dbh.*;
 import it.vin.dev.menzione.frame.*;
@@ -24,6 +28,7 @@ import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.*;
 import javax.swing.table.TableColumnModel;
+import javax.swing.text.MaskFormatter;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
@@ -31,7 +36,10 @@ import java.io.IOException;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.text.MessageFormat;
+import java.text.ParseException;
+import java.time.LocalDate;
 import java.util.*;
+import java.util.List;
 
 
 @SuppressWarnings({"FieldCanBeLocal", "Duplicates"})
@@ -59,15 +67,12 @@ public class MainFrame extends JFrame implements TableModelListener {
     private static final String SUD_PIN_REMOVE_COMMAND = "nord_pin_remove_command";
 
     private ResourceBundle strings = ResourceBundle.getBundle("Localization/Strings");
-//    private MainFrameColumnsSize mainFrameColumnsSize;
 
     //    private Date lastDateFromDb;
     private DatabaseService dbs;
-
     private VerboseLogger logger = VerboseLogger.create(MainFrame.class);
-
     private Date currentDate;
-
+    private DatePickerExistingDatesHighlightPolicy datePickerExistingDatesHighlightPolicy;
     private boolean dbhConnectionErrorShowed = false;
 
     private JPanel contentPane;
@@ -85,16 +90,11 @@ public class MainFrame extends JFrame implements TableModelListener {
     private JScrollPane sudPinScrollPane;
     private ViaggiJTable viaggiSudPinTable;
     private JSplitPane viaggiSudSplitPane;
-    //    private ViaggiTableModel nordTableModel;
-//    private ViaggiTableModel viaggiSudPinTableModel;
-    //    private ViaggiTableModel sudTableModel;
-//    private OrdiniTableModel ordiniSalitaTableModel;
-//    private OrdiniTableModel ordiniDiscesaTableModel;
     private OrdiniTable ordiniSalitaTable;
     private ViaggiJTable viaggiNordTable;
     private ViaggiJTable viaggiNordPinTable;
     private JSplitPane viaggiNordSplitPane;
-    private JFormattedTextField formattedTextField = new CustomDateTextField();
+    private JFormattedTextField formattedTextField;
     private JPanel northPanel;
     private JLabel lblDateSelection;
     private JPanel tablePanel;
@@ -683,10 +683,9 @@ public class MainFrame extends JFrame implements TableModelListener {
                         dbs.deleteDate(currentDate);
                         logger.info("deleteThisDayAction: date {} deleted successfully!", ViaggiUtils.createStringFromDate(currentDate, false));
                         logger.info("deleteThisDayAction: sending remote notification to other clients...");
-                        logger.info("deleteThisDayAction: loading new last date...");
-                        loadDate(dbs.getDataAggiornamento(), RELOAD_RESETCONNECTION);
-                        logger.info("deleteThisDayAction: notification sended successfully!");
+                        ViaggiEventsBus.getInstance().post(new DateDeleteEvent(currentDate, DateEventSource.THIS_APPLICATION));
                         DatabaseHelperChannel.getInstance().notifyDateRemoved(currentDate.toString());
+                        logger.verbose("deleteThisDayAction: notification sended successfully!");
                     } catch (SQLException e1) {
                         logger.warn("deleteThisDayAction: database deletion error logged in next line");
                         logDatabaseError(e1);
@@ -795,13 +794,6 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
     };
 
-/*    private final ActionListener sudAddAction = new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent e) {
-            sudTableModel.addRow(null);
-        }
-    };*/
-
     private final ActionListener viaggiRowsAction = new ActionListener() {
 
         @Override
@@ -903,46 +895,6 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
     };
 
-    /*private final ActionListener viaggiAddRowAction = new ActionListener() {
-        @Override
-        public void actionPerformed(ActionEvent arg0) {
-            String actionCommand = arg0.getActionCommand();
-            ViaggiTableModel tm;
-
-            switch (actionCommand) {
-                case NORD_ADD_ROW_COMMAND:
-                    tm = (ViaggiTableModel) viaggiNordTable.getModel(); break;
-                case SUD_ADD_ROW_COMMAND:
-                    tm = (ViaggiTableModel) viaggiSudTable.getModel(); break;
-                default:
-                    return;
-            }
-
-            tm.addRow(null);
-        }
-    };*/
-
-    /*private final ActionListener nordRemoveAction = new ActionListener() {
-        @SuppressWarnings("Duplicates")
-        @Override
-        public void actionPerformed(ActionEvent arg0) {
-            int selected = viaggiNordTable.getSelectedRow();
-            if(selected < 0) {
-                return;
-            }
-
-            if(viaggiNordTable.isEditing()){
-                viaggiNordTable.getCellEditor().cancelCellEditing();
-            }
-            Viaggio rimosso = ((ViaggiTableModel) viaggiNordTable.getModel()).removeRow(selected);
-            try {
-                dbs.rimuoviViaggio(rimosso);
-            } catch (SQLException e) {
-                logDatabaseError(e);
-            }
-        }
-    };*/
-
     private AbstractAction openConfigAction = new AbstractAction() {
         @Override
         public void actionPerformed(ActionEvent e) {
@@ -961,9 +913,9 @@ public class MainFrame extends JFrame implements TableModelListener {
         try {
             logger.info("init: connecting to database...");
             dbs = DatabaseService.create();
-            logger.info("inti: database connection success!");
-//            lastDateFromDb = dbs.getDataAggiornamento();
-        }catch (SQLException e) {
+            logger.info("int: database connection success!");
+            //            lastDateFromDb = dbs.getDataAggiornamento();
+        } catch (SQLException e) {
             logger.warn("int: database connection error logged in next line");
             logger.fatal(e.getMessage(), e);
             //String[] options = new String[] {"OK", "Impostazioni"};
@@ -1025,6 +977,13 @@ public class MainFrame extends JFrame implements TableModelListener {
         lblDateSelection = ViaggiFrameUtils.newJLabel(strings.getString("mainframe.label.date.selection"));
         northWestPanel.add(lblDateSelection);
 
+        try {
+            formattedTextField = new CustomDateTextField(new MaskFormatter("##/##/####"));
+        } catch (ParseException e) {
+            logger.error("mainframe: CustomDateTextField error", e);
+            formattedTextField = new JFormattedTextField();
+        }
+
         formattedTextField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
@@ -1040,9 +999,33 @@ public class MainFrame extends JFrame implements TableModelListener {
         });
         northWestPanel.add(formattedTextField);
 
+        logger.info("init: retreiving existing dates from database");
+        List<LocalDate> existingDates;
+        try {
+            existingDates = dbs.getDateEsistenti(
+                    Integer.parseInt(Configuration.getInstance().getProperty(Configuration.EXISTING_DATES_LIMIT))
+            );
+            logger.verbose("init: retreiving existing dates from database success");
+        } catch (SQLException e) {
+            logger.warn("init: retreiving existing dates from database error. ", e);
+            existingDates = new ArrayList<>();
+        }
+
+        DatePickerSettings datePickerSettings = new DatePickerSettings();
+        DatePicker datePicker = new DatePicker(datePickerSettings);
+        datePicker.addDateChangeListener(new FormattedTextFieldDateChangeListener(formattedTextField));
+        JButton datePickerBtn = datePicker.getComponentToggleCalendarButton();
+        datePickerBtn.setText("");
+        datePickerBtn.setIcon(ViaggiFrameUtils.getIcon("/Icons/calendar16.png"));
+        datePickerSettings.setVisibleDateTextField(false);
+        datePickerSettings.setGapBeforeButtonPixels(0);
+        datePickerSettings.setSizeDatePanelMinimumHeight((int) (datePickerSettings.getSizeDatePanelMinimumHeight() * 1.6));
+        datePickerSettings.setSizeDatePanelMinimumWidth((int) (datePickerSettings.getSizeDatePanelMinimumWidth() * 1.6));
+        this.datePickerExistingDatesHighlightPolicy = new DatePickerExistingDatesHighlightPolicy(existingDates);
+        datePickerSettings.setHighlightPolicy(this.datePickerExistingDatesHighlightPolicy);
+        northWestPanel.add(datePicker);
         JButton btnFind = ViaggiFrameUtils.newIconButton(
                 "/Icons/search16.png",
-                strings.getString("mainframe.button.find"),
                 e -> loadDateFromInsertedFormattedTextField(),
                 null
         );
@@ -1050,7 +1033,6 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         JButton reloadButton = ViaggiFrameUtils.newIconButton(
                 "/Icons/reload16.png",
-                strings.getString("mainframe.button.reload"),
                 reloadAction,
                 null
         );
@@ -1093,7 +1075,6 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         JButton btnDelete = ViaggiFrameUtils.newIconButton(
                 "/Icons/delete16.png",
-                strings.getString("mainframe.button.date.delete"),
                 deleteThisDayAction,
                 null
         );
@@ -2070,20 +2051,33 @@ public class MainFrame extends JFrame implements TableModelListener {
         String dateString = ViaggiUtils.createStringFromDate(event.date, false);
         if(event instanceof DateDeleteEvent) {
             logger.verbose("onDateEvent: received new DateDeleteEvent. Removed date: {}", dateString);
-            onDateRemoved(event.date, event.whoName, event.timestamp);
+            this.datePickerExistingDatesHighlightPolicy.removeDate(event.date.toLocalDate());
+            switch (event.getSource()) {
+                case THIS_APPLICATION:
+                    logger.info("onDateEvent: loading new last date...");
+                    try {
+                        loadDate(dbs.getDataAggiornamento(), RELOAD_RESETCONNECTION);
+                    } catch (SQLException e) {
+                        logger.error("onDateEvent: date retreiving error logged in next line");
+                        logDatabaseError(e);
+                    }
+                    break;
+                case DATABASE_HELPER:
+                    onDateRemoved(event.date, event.whoName, event.timestamp);
+                    break;
+            }
         } else if(event instanceof DateAddEvent) {
-            DateAddEvent dateAddEvent = ((DateAddEvent) event);
-
-            switch (dateAddEvent.getSource()) {
-                case ADD_DATE_FRAME:
+            switch (event.getSource()) {
+                case THIS_APPLICATION:
                     logger.verbose("onDateEvent: received new DateAddEvent from ADD_DATE_FRAME. New last date: {}", dateString);
-                    loadDate(dateAddEvent.getDate(), RELOAD_RESETCONNECTION);
+                    loadDate(event.getDate(), RELOAD_RESETCONNECTION);
                     break;
                 case DATABASE_HELPER:
                     logger.verbose("onDateEvent: received new DateAddEvent from DATABASE_HELPER. New last date: {}", dateString);
-                    onDateAdded(dateAddEvent.getDate(), dateAddEvent.getWhoName(), dateAddEvent.getTimestamp());
+                    onDateAdded(event.getDate(), event.getWhoName(), event.getTimestamp());
                     break;
             }
+            this.datePickerExistingDatesHighlightPolicy.addDate(event.date.toLocalDate());
         }
     }
 
@@ -2163,6 +2157,7 @@ public class MainFrame extends JFrame implements TableModelListener {
                 }
             });
         }
+        this.datePickerExistingDatesHighlightPolicy.removeDate(date.toLocalDate());
     }
 
 

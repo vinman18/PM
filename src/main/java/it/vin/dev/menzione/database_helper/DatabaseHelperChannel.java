@@ -4,6 +4,8 @@ import io.socket.client.IO;
 import io.socket.client.Socket;
 import it.vin.dev.menzione.VerboseLogger;
 import it.vin.dev.menzione.events.DateAddEvent;
+import it.vin.dev.menzione.events.DateEventSource;
+import it.vin.dev.menzione.events.DateDeleteEvent;
 import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.events.dbh.*;
 import it.vin.dev.menzione.logica.Configuration;
@@ -172,10 +174,10 @@ public class DatabaseHelperChannel {
 
         switch (event) {
             case SocketEvents.DATE_ADD:
-                dateEvent = new DateAddEvent(date, whoId, whoName, timestamp, DateAddEvent.DateAddEventSource.DATABASE_HELPER);
+                dateEvent = new DateAddEvent(date, whoId, whoName, timestamp, DateEventSource.DATABASE_HELPER);
                 break;
             case SocketEvents.DATE_DELETE:
-                dateEvent = new DateDeleteEvent(date, whoId, whoName, timestamp);
+                dateEvent = new DateDeleteEvent(date, whoId, whoName, timestamp, DateEventSource.DATABASE_HELPER);
                 break;
         }
 

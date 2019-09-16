@@ -4,11 +4,9 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
-import java.io.IOException;
 
 public class ViaggiFrameUtils {
     private static Logger logger = LogManager.getLogger(ViaggiFrameUtils.class);
@@ -48,15 +46,10 @@ public class ViaggiFrameUtils {
         return button;
     }
 
-    public static JButton newIconButton(String resourcePath, String alternateText, ActionListener action, @Nullable String actionCommand) {
+    public static JButton newIconButton(String resourcePath, ActionListener action, @Nullable String actionCommand) {
         JButton button = new JButton();
-        try {
-            Image reloadIcon = ImageIO.read(ViaggiFrameUtils.class.getResource(resourcePath));
-            button.setIcon(new ImageIcon(reloadIcon));
-        } catch (IOException e) {
-            logger.warn("Failed to load button icon", e);
-            button.setText(alternateText);
-        }
+        Image reloadIcon = Toolkit.getDefaultToolkit().getImage(ViaggiFrameUtils.class.getResource(resourcePath));
+        button.setIcon(new ImageIcon(reloadIcon));
 
         button.addActionListener(action);
 
@@ -76,5 +69,10 @@ public class ViaggiFrameUtils {
         table.changeSelection(row, col, false, false);
         //table.editCellAt(row, col);
         table.requestFocus();
+    }
+
+    public static Icon getIcon(String resourcePath) {
+        Image image = Toolkit.getDefaultToolkit().getImage(ViaggiFrameUtils.class.getResource(resourcePath));
+        return new ImageIcon(image);
     }
 }

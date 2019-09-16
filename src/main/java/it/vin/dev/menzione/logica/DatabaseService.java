@@ -3,6 +3,7 @@ package it.vin.dev.menzione.logica;
 import it.vin.dev.menzione.Consts;
 
 import java.sql.Statement;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Vector;
 import java.sql.Connection;
@@ -26,14 +27,6 @@ public class DatabaseService {
             throw new SQLException("Versione del database non compatibile con questa versione del programma");
         }
 
-		String query = "SELECT now()";
-		PreparedStatement st = conn.prepareStatement(query);
-
-		ResultSet rs = st.executeQuery();
-		Date result = null;
-		while(rs.next()){
-			System.out.println(rs.getString(1));
-		}
 		return dbs;
 	}
 
@@ -53,7 +46,7 @@ public class DatabaseService {
         String port = conf.getDbPort();
         String dbName = conf.getDbName();
 
-		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName + "?5serverTimezone=Europe/Rome";
+		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName + "?serverTimezone=Europe/Rome";
 		String user = conf.getDbUser();
 		String password = conf.getDbPassword();
 
@@ -933,7 +926,7 @@ public class DatabaseService {
 
 	}
 
-	public ArrayList<Date> getDateEsistenti() throws SQLException {
+	public ArrayList<Date> getDateEsistentiLegacy() throws SQLException {
 		String query = "SELECT * FROM vw_existing_dates ORDER BY Data desc";
 
 		Statement s = conn.createStatement();
@@ -950,7 +943,7 @@ public class DatabaseService {
 		return toReturn;
 	}
 
-    public ArrayList<Date> getDateEsistenti(int limit) throws SQLException {
+    public ArrayList<Date> getDateEsistentiLegacy(int limit) throws SQLException {
         String query = "SELECT * FROM vw_existing_dates ORDER BY Data desc LIMIT ?";
 
         PreparedStatement s = conn.prepareStatement(query);
@@ -968,6 +961,25 @@ public class DatabaseService {
 
         return toReturn;
     }
+
+	public ArrayList<LocalDate> getDateEsistenti(int limit) throws SQLException {
+		String query = "SELECT * FROM vw_existing_dates ORDER BY Data desc LIMIT ?";
+
+		PreparedStatement s = conn.prepareStatement(query);
+		s.setInt(1, limit);
+		ResultSet rs = s.executeQuery();
+
+		ArrayList<LocalDate> toReturn = new ArrayList<>();
+		while(rs.next()){
+			LocalDate data = rs.getDate("Data").toLocalDate();
+			toReturn.add(data);
+		}
+
+		rs.close();
+		s.close();
+
+		return toReturn;
+	}
 
 	public boolean aggiungiGiornata(Date newDate, Vector<Viaggio> newViaggi, Vector<Ordine> newOrdini, Nota newFermi, Nota newNonAss) throws SQLException{
 		boolean result = false;
@@ -1213,7 +1225,7 @@ public class DatabaseService {
     }
 
     public Date getLastDate() throws SQLException {
-        ArrayList<Date> dateEsistenti = getDateEsistenti(1);
+        ArrayList<Date> dateEsistenti = getDateEsistentiLegacy(1);
 
         if(dateEsistenti.size() == 1) {
             return dateEsistenti.get(0);
