@@ -20,6 +20,8 @@ import it.vin.dev.menzione.events.dbh.*;
 import it.vin.dev.menzione.frame.*;
 import it.vin.dev.menzione.logica.*;
 import it.vin.dev.menzione.workers.*;
+import org.apache.commons.configuration2.event.ConfigurationEvent;
+import org.apache.commons.configuration2.event.EventListener;
 import org.apache.logging.log4j.ThreadContext;
 
 import javax.annotation.Nullable;
@@ -432,7 +434,7 @@ public class MainFrame extends JFrame implements TableModelListener {
     private final ActionListener removeOrderAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent arg0) {
-            int secondsToWait = Integer.parseInt(Configuration.getInstance().getProperty(Configuration.UNDO_WAIT_SECONDS));
+            int secondsToWait = ConfigurationManager.getInstance().getUndoWaitSeconds();
             String command = arg0.getActionCommand();
             String deleteSuccessMessage = strings.getString("mainframe.infofield.table.row.delete");
             String clickToCancelMessage = MessageFormat.format(
@@ -830,7 +832,7 @@ public class MainFrame extends JFrame implements TableModelListener {
                 case SUD_REMOVE_ROW_COMMAND:
                 case NORD_PIN_REMOVE_COMMAND:
                 case SUD_PIN_REMOVE_COMMAND:
-                    int secondsToWait = Integer.parseInt(Configuration.getInstance().getProperty(Configuration.UNDO_WAIT_SECONDS));
+                    int secondsToWait = ConfigurationManager.getInstance().getUndoWaitSeconds();
                     int selectedRow = table.getSelectedRow();
                     int selectedColumn = table.getSelectedColumn();
                     String deleteSuccessMessage = strings.getString("mainframe.infofield.table.row.delete");
@@ -888,7 +890,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
     };
 
-    private final ActionListener resetDefaultColumnsSize = new ActionListener() {
+    private final ActionListener resetDefaultColumnsSizeAction = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
             formattaTabelle(null);
@@ -905,8 +907,22 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
     };
 
+    private org.apache.commons.configuration2.event.EventListener<ConfigurationEvent> configurationEventListener = new EventListener<ConfigurationEvent>() {
+        @Override
+        public void onEvent(ConfigurationEvent event) {
+            if (!event.isBeforeUpdate()) {
+                if (event.getPropertyName().equals(ConfigurationManager.EXISTING_DATES_LIMIT)) {
+                    Integer propertyValue = (Integer) event.getPropertyValue();
+                    logger.verbose("Updated {} preference. New value: {}", ConfigurationManager.EXISTING_DATES_LIMIT, propertyValue);
+                    datePickerExistingDatesHighlightPolicy.replaceDates(getExistingDates());
+                }
+            }
+        }
+    };
+
     private void init() throws SQLException {
         logger.verbose("init: creating frame icon...");
+        ConfigurationManager.getInstance().addConfigurationListener(configurationEventListener);
         this.setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
 //        tableColumnModelListenerMap = new HashMap<>();
 
@@ -999,18 +1015,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         });
         northWestPanel.add(formattedTextField);
 
-        logger.info("init: retreiving existing dates from database");
-        List<LocalDate> existingDates;
-        try {
-            existingDates = dbs.getDateEsistenti(
-                    Integer.parseInt(Configuration.getInstance().getProperty(Configuration.EXISTING_DATES_LIMIT))
-            );
-            logger.verbose("init: retreiving existing dates from database success");
-        } catch (SQLException e) {
-            logger.warn("init: retreiving existing dates from database error. ", e);
-            existingDates = new ArrayList<>();
-        }
-
+        List<LocalDate> existingDates = getExistingDates();
         DatePickerSettings datePickerSettings = new DatePickerSettings();
         DatePicker datePicker = new DatePicker(datePickerSettings);
         datePicker.addDateChangeListener(new FormattedTextFieldDateChangeListener(formattedTextField));
@@ -1047,7 +1052,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         JButton btnResetColumnsSize = ViaggiFrameUtils.newButton(
                 strings.getString("mainframe.button.reset.columns.size"),
-                resetDefaultColumnsSize,
+                resetDefaultColumnsSizeAction,
                 null
         );
         northWestPanel.add(btnResetColumnsSize);
@@ -1518,6 +1523,21 @@ public class MainFrame extends JFrame implements TableModelListener {
             viaggiSplitPane.setBorder(BorderFactory.createTitledBorder("viaggiSplitPane"));
 //            clientiTableSplitPane.setBorder(BorderFactory.createTitledBorder("clientiTableSplitPane"));
         }
+    }
+
+    private List<LocalDate> getExistingDates() {
+        logger.info("init: retreiving existing dates from database");
+        List<LocalDate> existingDates;
+        try {
+            existingDates = dbs.getDateEsistenti(
+                    ConfigurationManager.getInstance().getExistingDatesLimit()
+            );
+            logger.verbose("init: retreiving existing dates from database success");
+        } catch (SQLException e) {
+            logger.warn("init: retreiving existing dates from database error. ", e);
+            existingDates = new ArrayList<>();
+        }
+        return existingDates;
     }
 
 /*    @Subscribe

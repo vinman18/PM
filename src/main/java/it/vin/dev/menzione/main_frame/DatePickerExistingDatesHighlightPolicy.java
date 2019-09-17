@@ -47,4 +47,11 @@ public class DatePickerExistingDatesHighlightPolicy implements DateHighlightPoli
         long key = date.toEpochDay();
         this.existingDates.remove(key);
     }
+
+    public void replaceDates(List<LocalDate> existingDates) {
+        this.existingDates.clear();
+        for (LocalDate existingDate : existingDates) {
+            addDate(existingDate);
+        }
+    }
 }

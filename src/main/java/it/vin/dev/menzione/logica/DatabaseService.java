@@ -41,14 +41,14 @@ public class DatabaseService {
 			e.printStackTrace();
 		}
 
-        Configuration conf = Configuration.getInstance();
-        String ip = conf.getLocation();
-        String port = conf.getDbPort();
-        String dbName = conf.getDbName();
+        ConfigurationManager conf = ConfigurationManager.getInstance();
+        String ip = conf.getDatabaseLocation();
+        int port = conf.getDatabasePort();
+        String dbName = conf.getDatabaseName();
 
 		String url = "jdbc:mysql://"+ ip + ":" + port + "/" + dbName + "?serverTimezone=Europe/Rome";
-		String user = conf.getDbUser();
-		String password = conf.getDbPassword();
+		String user = conf.getDatabaseUser();
+		String password = conf.getDatabasePassword();
 
 		return DriverManager.getConnection(url, user, password);
 	}

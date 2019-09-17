@@ -2,13 +2,12 @@ package it.vin.dev.menzione.logica;
 
 import it.vin.dev.menzione.ViaggiUtils;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Properties;
 
-public class Configuration {
+public class ConfigurationOld {
 
     public static final String USER =                   "local.user";
     public static final String DB_NAME =                "db.name";
@@ -18,26 +17,26 @@ public class Configuration {
     public static final String DB_PASSWORD =            "db.password";
     public static final String DBHELPER_HOST =          "dbhelper.host";
     public static final String DBHELPER_PORT =          "dbhelper.port";
-    public static final String UNDO_WAIT_SECONDS =      "undo.wait.secs";
-    public static final String EXISTING_DATES_LIMIT =   "existing.dates.limit";
+    public static final String UNDO_WAIT_SECONDS = "prefs.undo.wait.secs";
+    public static final String EXISTING_DATES_LIMIT = "prefs.existing.dates.limit";
 
     private Properties props;
 
-    private static Configuration ourInstance;
+    private static ConfigurationOld ourInstance;
 
     static {
         try{
-            ourInstance = new Configuration();
+            ourInstance = new ConfigurationOld();
         }catch (IOException e){
             throw new ExceptionInInitializerError(e);
         }
     }
 
-    public static Configuration getInstance(){
+    public static ConfigurationOld getInstance(){
         return ourInstance;
     }
 
-    private Configuration() throws IOException {
+    private ConfigurationOld() throws IOException {
         String configPath = ViaggiUtils.getConfigPath();
 
         props = new Properties();

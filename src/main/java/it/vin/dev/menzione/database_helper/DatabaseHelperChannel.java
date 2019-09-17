@@ -8,7 +8,7 @@ import it.vin.dev.menzione.events.DateEventSource;
 import it.vin.dev.menzione.events.DateDeleteEvent;
 import it.vin.dev.menzione.events.ViaggiEventsBus;
 import it.vin.dev.menzione.events.dbh.*;
-import it.vin.dev.menzione.logica.Configuration;
+import it.vin.dev.menzione.logica.ConfigurationManager;
 import org.json.JSONObject;
 
 import java.net.URISyntaxException;
@@ -45,8 +45,8 @@ public class DatabaseHelperChannel {
 
     private DatabaseHelperChannel() {
         logger.info("DatabaseHelperChannel: channel initialization");
-        String host = Configuration.getInstance().getDbhelperHost();
-        int port = Configuration.getInstance().getDbhelperPort();
+        String host = ConfigurationManager.getInstance().getDBHelperHost();
+        int port = ConfigurationManager.getInstance().getDBHelperPort();
         endpoint = String.format("http://%s:%d", host, port);
         try {
             socket = IO.socket(endpoint);

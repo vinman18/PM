@@ -9,8 +9,24 @@ import java.awt.*;
 import java.awt.event.ActionListener;
 
 public class ViaggiFrameUtils {
+    public static class StyledText {
+        String text;
+        Color color;
+        Integer size;
+
+        public StyledText(String text, Color color, Integer size) {
+            this.text = text;
+            this.color = color;
+            this.size = size;
+        }
+    }
+
     private static Logger logger = LogManager.getLogger(ViaggiFrameUtils.class);
     public static final boolean DEBUG_FRAME = false;
+
+    public static String colorHexString(Color color) {
+        return String.format("#%02X%02X%02X", color.getRed(), color.getGreen(), color.getBlue());
+    }
 
     public static JLabel newJLabel(String text, @Nullable Font font) {
         JLabel label = new JLabel(text);
@@ -22,6 +38,29 @@ public class ViaggiFrameUtils {
 
     public static JLabel newJLabel(String text) {
         return newJLabel(text, null);
+    }
+
+    public static JLabel multiStyledLabel(StyledText... textParts) {
+        StringBuilder htmlString = new StringBuilder();
+        htmlString.append("<html>");
+        for (StyledText textPart : textParts) {
+            String text = textPart.text.replace("\n", "<br>");
+            htmlString.append("<font");
+            if (textPart.color != null) {
+                htmlString.append(" color='")
+                        .append(colorHexString(textPart.color))
+                        .append("'");
+            }
+            if (textPart.size != null) {
+                htmlString.append(" size=")
+                        .append(textPart.size);
+            }
+            htmlString.append(">")
+                    .append(text)
+                    .append("</font>");
+        }
+        htmlString.append("</html>");
+        return newJLabel(htmlString.toString());
     }
 
     public static JButton newButton(String text, ActionListener action, @Nullable String actionCommand) {
