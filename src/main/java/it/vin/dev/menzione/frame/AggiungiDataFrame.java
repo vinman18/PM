@@ -1,8 +1,7 @@
 package it.vin.dev.menzione.frame;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.awt.event.*;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -36,11 +35,6 @@ import it.vin.dev.menzione.main_frame.DatePickerExistingDatesHighlightPolicy;
 import it.vin.dev.menzione.main_frame.FormattedTextFieldDateChangeListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.ActionEvent;
 
 
 public class AggiungiDataFrame extends JFrame implements TableModelListener {
@@ -326,6 +320,14 @@ public class AggiungiDataFrame extends JFrame implements TableModelListener {
             headerPanel.setBorder(new TitledBorder("headerPanel"));
         }
 
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if(datePicker.isPopupOpen()) {
+                    datePicker.closePopup();
+                }
+            }
+        });
         pack();
     }
 

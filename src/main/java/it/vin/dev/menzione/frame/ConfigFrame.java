@@ -29,6 +29,9 @@ public class ConfigFrame extends JFrame{
         configFrame.setDefaultCloseOperation(closeOption);
         configFrame.pack();
         configFrame.setSize(600, 500);
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        configFrame.setLocation((screenSize.width / 2) - (configFrame.getWidth() / 2),
+                (screenSize.height / 2) - (configFrame.getHeight() / 2));
         configFrame.setVisible(true);
     }
 
@@ -42,16 +45,14 @@ public class ConfigFrame extends JFrame{
 
         setTitle(strings.getString("app.title") + " - " + strings.getString("app.version"));
         setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        setLocation((screenSize.width / 2) -  (getWidth() / 2), (screenSize.height / 2) - (getHeight() / 2));
     }
 
     private void createUIComponents() {
         JPanel centerPanel = getConfigPanel();
         rootPanel.add(centerPanel, BorderLayout.CENTER);
 
-        JButton cancelBtn = new JButton(strings.getString("generic.cancel"));
-        cancelBtn.addActionListener(e -> {
+        JButton closeBtn = new JButton(strings.getString("generic.close"));
+        closeBtn.addActionListener(e -> {
             if(ConfigFrame.this.getDefaultCloseOperation() == WindowConstants.EXIT_ON_CLOSE) {
                 System.exit(0);
             } else {
@@ -70,14 +71,14 @@ public class ConfigFrame extends JFrame{
             Msg.info(null, MessageFormat.format(strings.getString("configframe.save.success"), ViaggiUtils.getConfigPath()));
         });
         JPanel bottomPanel = new JPanel(new FlowLayout());
-        bottomPanel.add(cancelBtn);
+        bottomPanel.add(closeBtn);
         bottomPanel.add(saveBtn);
         rootPanel.add(bottomPanel, BorderLayout.SOUTH);
     }
 
     private JPanel getConfigPanel() {
         JPanel centerPanel = new JPanel(new GridBagLayout());
-        centerPanel.setBorder(BorderFactory.createTitledBorder("CenterPanel"));
+        centerPanel.setBorder(BorderFactory.createEtchedBorder());
         Iterator<String> keys = configurationManager.getConfiguration().getKeys();
         int currentRow = 0;
         while (keys.hasNext()) {

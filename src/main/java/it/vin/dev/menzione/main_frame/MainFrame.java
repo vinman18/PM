@@ -922,7 +922,6 @@ public class MainFrame extends JFrame implements TableModelListener {
 
     private void init() throws SQLException {
         logger.verbose("init: creating frame icon...");
-        ConfigurationManager.getInstance().addConfigurationListener(configurationEventListener);
         this.setIconImage(Toolkit.getDefaultToolkit().createImage(ViaggiUtils.getMainIcon()));
 //        tableColumnModelListenerMap = new HashMap<>();
 
@@ -930,11 +929,9 @@ public class MainFrame extends JFrame implements TableModelListener {
             logger.info("init: connecting to database...");
             dbs = DatabaseService.create();
             logger.info("int: database connection success!");
-            //            lastDateFromDb = dbs.getDataAggiornamento();
         } catch (SQLException e) {
             logger.warn("int: database connection error logged in next line");
             logger.fatal(e.getMessage(), e);
-            //String[] options = new String[] {"OK", "Impostazioni"};
 
             String[] options = strings.getString("mainframe.msg.options.ok.settings").split(",");
 
@@ -957,6 +954,7 @@ public class MainFrame extends JFrame implements TableModelListener {
             }
         }
 
+        ConfigurationManager.getInstance().addConfigurationListener(configurationEventListener);
         ViaggiEventsBus.getInstance().register(this);
 
         rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke("F12"), "openConfig");
@@ -978,9 +976,6 @@ public class MainFrame extends JFrame implements TableModelListener {
         contentPane = new JPanel(new BorderLayout(0, 0));
         contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
         setContentPane(contentPane);
-
-        //nordTableModel = new ViaggiTableModel(Consts.VIAGGI_NORD, camions);
-//        sudTableModel = new ViaggiTableModel(Consts.VIAGGI_SUD);
 
         northPanel = new JPanel(new BorderLayout());
         northPanel.setAlignmentY(Component.CENTER_ALIGNMENT);
@@ -1154,11 +1149,9 @@ public class MainFrame extends JFrame implements TableModelListener {
 //        tablePanel.add(ordiniSalitaTable);
 
         clientiTableScrollPane = new JScrollPane(ordiniSalitaTable);
-//        clientiTableScrollPane.setPreferredSize(new Dimension(452, 200));
         salitaPanel.add(clientiTableScrollPane);
 
         discesaPanel = new JPanel(new BorderLayout(0, 0));
-//        discesaPanel.setPreferredSize(new Dimension(452, 200));
 
         ordiniDiscesaButtonPanel = new JPanel(new BorderLayout(0, 0));
         discesaPanel.add(ordiniDiscesaButtonPanel, BorderLayout.NORTH);
@@ -1201,20 +1194,12 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         scrollPane.setViewportView(ordiniDiscesaTable);
 
-/*        clientiTableSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, salitaPanel, discesaPanel);
-        clientiTableSplitPane.setVerifyInputWhenFocusTarget(false);
-        clientiTableSplitPane.setDividerSize(1);
-        clientiTableSplitPane.setBorder(null);
-        clientiTableSplitPane.setLayout(new BoxLayout(clientiTableSplitPane, BoxLayout.Y_AXIS));*/
-
 
         centerLeftPanel = new JPanel(new GridBagLayout());
         tablePanel.add(centerLeftPanel, new GridBagConstraints(0, 0, 1, 1, 0.5, 0.5, GridBagConstraints.NORTHWEST,
                 GridBagConstraints.BOTH, new Insets(1, 1, 1, 1), 1, 1));
-//        centerLeftPanel.add(clientiTableSplitPane);
-        notePanel = new JPanel(new BorderLayout(0, 0));
-//        centerLeftPanel.add(notePanel, BorderLayout.SOUTH);
 
+        notePanel = new JPanel(new BorderLayout(0, 0));
         noteScrollPane = new JScrollPane();
 
         noteTable = new JTable();
@@ -1268,7 +1253,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 //        tablePanel.add(viaggiSudTable);
         viaggiSudTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
 
-        //TODO: viaggi sud table model definition goes here
+        // viaggi sud table model definition goes here
         sudTableButtonPanel = new JPanel(new BorderLayout(0, 0));
         sudTablePanel.add(sudTableButtonPanel, BorderLayout.NORTH);
 
@@ -1319,7 +1304,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         viaggiSudPinTable = new ViaggiJTable(Consts.TABLE_TYPES.VIAGGI_SUD);
         viaggiSudPinTable.setTableHeader(null);
         viaggiSudPinTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
-        //TODO: viaggi sud pin table model definition goes here
+        // viaggi sud pin table model definition goes here
         sudPinScrollPane = new JScrollPane(viaggiSudPinTable);
         sudPinScrollPane.setBorder(BorderFactory.createEmptyBorder());
 
@@ -1333,7 +1318,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         viaggiNordTable = new ViaggiJTable(Consts.TABLE_TYPES.VIAGGI_NORD);
 //        tablePanel.add(viaggiNordTable);
         viaggiNordTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
-        //TODO: viaggi nord table model definition goes here
+        // viaggi nord table model definition goes here
 
         nordTableButtonPanel = new JPanel(new BorderLayout(0, 0));
         nordTablePanel.add(nordTableButtonPanel, BorderLayout.NORTH);
@@ -1367,7 +1352,7 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         viaggiNordPinTable.setTableHeader(null);
         viaggiNordPinTable.putClientProperty("terminateEditOnFocusLost", Boolean.TRUE);
-        //TODO: viaggi nord pin table model declaration goes here
+        // viaggi nord pin table model declaration goes here
         nordPinScrollPane = new JScrollPane(viaggiNordPinTable);
         nordPinScrollPane.setBorder(BorderFactory.createEmptyBorder());
         viaggiNordSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nordTableScrollPane, nordPinScrollPane);
@@ -1467,20 +1452,6 @@ public class MainFrame extends JFrame implements TableModelListener {
 
         formattaTabelle(mainFrameColumnsSize);
         createTablesPopupMenu();
-/*        try {
-            updateCamionList();
-        }catch (SQLException e) {
-            logDatabaseError(e);
-        }
-        formattaTabelle();*/
-//        try {
-            /*reloadTableModel(lastDateFromDb, MainFrame.RELOAD_STANDARD);
-            reloadOrdiniModel(lastDateFromDb);
-            reloadNote(lastDateFromDb);*/
-//        }catch (SQLException e){
-//            logDatabaseError(e);
-//        }
-
 
         if(DEBUG_FRAME) {
             panel.setBorder(BorderFactory.createTitledBorder("panel"));
@@ -1526,28 +1497,19 @@ public class MainFrame extends JFrame implements TableModelListener {
     }
 
     private List<LocalDate> getExistingDates() {
-        logger.info("init: retreiving existing dates from database");
+        logger.info("getExistingDates: retreiving existing dates from database");
         List<LocalDate> existingDates;
         try {
             existingDates = dbs.getDateEsistenti(
                     ConfigurationManager.getInstance().getExistingDatesLimit()
             );
-            logger.verbose("init: retreiving existing dates from database success");
+            logger.verbose("getExistingDates: retreiving existing dates from database success");
         } catch (SQLException e) {
-            logger.warn("init: retreiving existing dates from database error. ", e);
+            logger.warn("getExistingDates: retreiving existing dates from database error. ", e);
             existingDates = new ArrayList<>();
         }
         return existingDates;
     }
-
-/*    @Subscribe
-    public void updateCamionList(CamionEvent e) {
-//        camions = dbs.getCamion();
-//        ((ViaggiTableModel) viaggiNordTable.getModel()).setCamions(camions);
-//        sudTableModel.setCamions(camions);
-        formattaTabelle();
-    }*/
-
 
     public void reloadTableModel(Date d) throws SQLException {
         logger.info("reloadTableModel: reloading viaggi table models...");
@@ -1615,7 +1577,7 @@ public class MainFrame extends JFrame implements TableModelListener {
         viaggiNordPinTableModel.setData(nordPinned);
         viaggiNordPinTableModel.setCurrentDate(d);
 
-        // with setAutoCreateColumnsFromModel flag setted every time we create a new table model,
+        // with setAutoCreateColumnsFromModel flag set every time we create a new table model,
         // columns width would be reset
         // so after the first time Column Model is created automatically, we stop this behavior
         // (we can -hopefully- think that the Column Model never change when a new table model is created)
@@ -1715,8 +1677,6 @@ public class MainFrame extends JFrame implements TableModelListener {
             ThreadContext.put("currentDate", ViaggiUtils.createStringFromDate(currentDate, true));
             selectedDateLbl.setText(ViaggiUtils.createStringFromDate(currentDate, false));
 
-//            formattaTabelle();
-            //updateCamionList();
             resizePinTables();
             logger.info("loadDate: date loaded");
             infoTextField.setInfoMessage(strings.getString("mainframe.infofield.welcome"));
@@ -1732,7 +1692,6 @@ public class MainFrame extends JFrame implements TableModelListener {
         try{
             d = ViaggiUtils.checkAndCreateDate(text, "/", false);
         }catch(NumberFormatException ex){
-            //logger.info(ex.getMessage(), ex);
             formattedTextField.setBackground(Color.RED);
         }
         if(d != null){
@@ -1927,7 +1886,6 @@ public class MainFrame extends JFrame implements TableModelListener {
         }
 
         //viaggiSplitPane.setDividerLocation(0.5);
-        //TODO: persist user columns width preferences (maybe per date?)
         viaggiSplitPane.setResizeWeight(0.5);
 
         viaggiNordTable.doTableLayout(mainFrameColumnsSize.viaggiNord);
@@ -1941,7 +1899,6 @@ public class MainFrame extends JFrame implements TableModelListener {
 
     private void resizePinTables() {
         int h = viaggiNordSplitPane.getHeight();
-        //logger.debug("SIZE" + h);
 
         int maxRowCount = Math.max(viaggiSudPinTable.getRowCount(), viaggiNordPinTable.getRowCount());
         maxRowCount = maxRowCount + 2;
@@ -2003,7 +1960,7 @@ public class MainFrame extends JFrame implements TableModelListener {
     }
 
     private void notifyRowUpdated(String table, String columnName, String newValue, String date) {
-        logger.verbose("notifyRowUpdated: updated row on table '{}'. Col {}. Value '{}", table, columnName, newValue);
+        logger.verbose("notifyRowUpdated: updated row on table '{}'. Col {}. Value '{}'", table, columnName, newValue);
         String updateMessage = MessageFormat.format(strings.getString("mainframe.infofield.table.row.update"), table, newValue, columnName);
         updateMessage = dbhNotifyUpdateToClients(table, date, updateMessage);
 
@@ -2199,7 +2156,7 @@ public class MainFrame extends JFrame implements TableModelListener {
             TableColumnModel sourceModel = sourceTable.getColumnModel();
             TableColumnModel targetModel = targetTable.getColumnModel();
 
-            // NB: uncomment next lines (and all other tableColumnModelListenerMap uses in code if you want also
+            // NB: uncomment next lines (and all other tableColumnModelListenerMap uses in code) if you want also
             // the inverse trigger (if pin table is resized then resize normal table)
 //            TableColumnModelListener listener = tableColumnModelListenerMap.get(targetTable);
 

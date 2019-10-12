@@ -48,8 +48,11 @@ public class DatabaseHelperChannel {
         String host = ConfigurationManager.getInstance().getDBHelperHost();
         int port = ConfigurationManager.getInstance().getDBHelperPort();
         endpoint = String.format("http://%s:%d", host, port);
+
+        IO.Options socketOptions = new IO.Options();
+        socketOptions.reconnectionAttempts = 100;
         try {
-            socket = IO.socket(endpoint);
+            socket = IO.socket(endpoint, socketOptions);
         } catch (URISyntaxException e) {
             logger.warn("DatabaseHelperChannel: wrong endpoint url");
             socket = null;

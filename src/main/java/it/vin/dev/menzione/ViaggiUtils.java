@@ -3,8 +3,6 @@ package it.vin.dev.menzione;
 import com.google.common.base.Charsets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
 
 import javax.crypto.*;
 import javax.crypto.spec.DESKeySpec;
@@ -28,6 +26,7 @@ import java.sql.Date;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -38,7 +37,6 @@ public class ViaggiUtils {
     private final static String LOCAL_APP_DATA = System.getenv().get("LOCALAPPDATA");
 
     private static final byte[] KEY_BYTES = "DnyzRUcQuZ4yy68X".getBytes(Charsets.UTF_8);
-    private static final byte[] IV_BYTES = "CBAJ9vKAmdg9uSRJ".getBytes(Charsets.UTF_8);
 
 
     public static String getAppPath() {
@@ -211,10 +209,10 @@ public class ViaggiUtils {
             keySpec = new DESKeySpec(KEY_BYTES);
             SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
             SecretKey key = keyFactory.generateSecret(keySpec);
-            sun.misc.BASE64Encoder base64encoder = new BASE64Encoder();
+            Base64.Encoder base64encoder = Base64.getEncoder();
             Cipher cipher = Cipher.getInstance("DES"); // cipher is not thread safe
             cipher.init(Cipher.ENCRYPT_MODE, key);
-            return base64encoder.encode(cipher.doFinal(cleartext));
+            return new String(base64encoder.encode(cipher.doFinal(cleartext)));
         } catch (InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
@@ -227,13 +225,13 @@ public class ViaggiUtils {
             keySpec = new DESKeySpec(KEY_BYTES);
             SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
             SecretKey key = keyFactory.generateSecret(keySpec);
-            sun.misc.BASE64Decoder base64decoder = new BASE64Decoder();
-            byte[] encrypedPwdBytes = base64decoder.decodeBuffer(encryptedPwd);
+            Base64.Decoder base64decoder = Base64.getDecoder();
+            byte[] encrypedPwdBytes = base64decoder.decode(encryptedPwd);
             Cipher cipher = Cipher.getInstance("DES");// cipher is not thread safe
             cipher.init(Cipher.DECRYPT_MODE, key);
             byte[] plainTextPwdBytes = (cipher.doFinal(encrypedPwdBytes));
             return new String(plainTextPwdBytes, Charsets.UTF_8);
-        } catch (InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException | IOException e) {
+        } catch (InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
         }
 

@@ -3,6 +3,7 @@ package it.vin.dev.menzione;
 import it.vin.dev.menzione.database_helper.DatabaseClient;
 import it.vin.dev.menzione.database_helper.DatabaseHelperChannel;
 import it.vin.dev.menzione.logica.ConfigurationManager;
+import it.vin.dev.menzione.logica.DatabaseService;
 import it.vin.dev.menzione.main_frame.MainFrame;
 
 import javax.swing.*;
