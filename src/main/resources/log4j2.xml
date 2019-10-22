@@ -17,11 +17,11 @@
 
     <Loggers>
         <Logger name="it.vin.dev.menzione.main_frame.MainFrame" level="all" additivity="false">
-            <AppenderRef ref="Console-currentdate" level="debug"/>
+            <AppenderRef ref="Console-currentdate" level="info"/>
             <AppenderRef ref="MyFile-currentdate" level="verbose"/>
         </Logger>
         <Root level="all">
-            <AppenderRef ref="Console" level="all"/>
+            <AppenderRef ref="Console" level="info"/>
             <AppenderRef ref="MyFile" level="verbose"/>
         </Root>
     </Loggers>

@@ -444,6 +444,9 @@ public class MainFrame extends JFrame implements TableModelListener {
             OrdiniTable table = command.equals(ORDINI_DISCESA_COMMAND)
                     ? ordiniDiscesaTable
                     : ordiniSalitaTable;
+            String tableName = command.equals(ORDINI_DISCESA_COMMAND)
+                    ? "Ordini Discesa"
+                    : "Ordini Salita";
 
             String tableType = command.equals(ORDINI_DISCESA_COMMAND) ? "DISCESA" : "SALITA";
             int rowSel = table.getSelectedRow();
@@ -484,6 +487,7 @@ public class MainFrame extends JFrame implements TableModelListener {
                         infoTextField.setInfoMessage(strings.getString("mainframe.infofield.table.row.delete.cancelled"));
                     }
                 });
+                notifyRowDeleted(tableName, String.valueOf(removed.getId()), removed.getDate().toString());
             } catch (SQLException e) {
                 tm.addRow(removed);
                 logger.warn("removeOrderAction: order removing error logged in next line");
@@ -555,6 +559,7 @@ public class MainFrame extends JFrame implements TableModelListener {
             try {
                 dbs.rimuoviNota(n);
                 logger.info("deleteNoteAction: nota deleted from database successfully!");
+                notifyRowDeleted("Note", String.valueOf(n.getId()), n.getData().toString());
             } catch (SQLException e1) {
                 tm.addRow(n);
                 logger.warn("deleteNoteAction: nota delete error logged in next line");
@@ -669,9 +674,14 @@ public class MainFrame extends JFrame implements TableModelListener {
         public void actionPerformed(ActionEvent e) {
             Component source = (Component) e.getSource();
             Component root = SwingUtilities.getRoot(source);
+            Date dateToDelete = new Date(currentDate.getTime());
 
-            String currentDateString = ViaggiUtils.createStringFromDate(currentDate, true);
-            logger.info("deleteThisDayAction: deleting date {}", ViaggiUtils.createStringFromDate(currentDate, false));
+            if(!dateToDelete.equals(currentDate)) {
+                logger.error("deleteThisDayAction: DATE TO DELETE NOT CORRESPOND TO CURRENT DATE");
+            }
+
+            String currentDateString = ViaggiUtils.createStringFromDate(dateToDelete, true);
+            logger.info("deleteThisDayAction: deleting date {}", ViaggiUtils.createStringFromDate(dateToDelete, false));
             logger.verbose("deleteThisDayAction: prompting first confirmation check...");
             int resp1 = Msg.yesno(root, MessageFormat.format(strings.getString("mainframe.msg.date.delete.confirm.1"), currentDateString));
 
@@ -682,11 +692,11 @@ public class MainFrame extends JFrame implements TableModelListener {
                 if(resp2 == JOptionPane.YES_OPTION) {
                     logger.verbose("deleteThisDayAction: second confirmation check passed, proceeding with database deletion...");
                     try {
-                        dbs.deleteDate(currentDate);
-                        logger.info("deleteThisDayAction: date {} deleted successfully!", ViaggiUtils.createStringFromDate(currentDate, false));
+                        dbs.deleteDate(dateToDelete);
+                        logger.info("deleteThisDayAction: date {} deleted successfully!", ViaggiUtils.createStringFromDate(dateToDelete, false));
                         logger.info("deleteThisDayAction: sending remote notification to other clients...");
-                        ViaggiEventsBus.getInstance().post(new DateDeleteEvent(currentDate, DateEventSource.THIS_APPLICATION));
-                        DatabaseHelperChannel.getInstance().notifyDateRemoved(currentDate.toString());
+                        ViaggiEventsBus.getInstance().post(new DateDeleteEvent(dateToDelete, DateEventSource.THIS_APPLICATION));
+                        DatabaseHelperChannel.getInstance().notifyDateRemoved(dateToDelete.toString());
                         logger.verbose("deleteThisDayAction: notification sended successfully!");
                     } catch (SQLException e1) {
                         logger.warn("deleteThisDayAction: database deletion error logged in next line");
@@ -877,6 +887,9 @@ public class MainFrame extends JFrame implements TableModelListener {
                                 infoTextField.setInfoMessage(strings.getString("mainframe.infofield.table.row.delete.cancelled"));
                             }
                         });
+                        notifyRowDeleted(ViaggiTableModel.getTableModelName(((ViaggiTableModel) table.getModel())),
+                                String.valueOf(removed.getId()),
+                                removed.getData().toString());
                     } catch (SQLException e) {
                         ((ViaggiTableModel) table.getModel()).addRow(removed);
                         logger.warn("viaggiRowsAction: database remove error logged in next line");
@@ -2004,6 +2017,23 @@ public class MainFrame extends JFrame implements TableModelListener {
         infoTextField.setInfoMessage(insertMessage);
     }
 
+    private void notifyRowDeleted(String table, String id, String date) {
+        logger.verbose("notifyRowDeleted: deleted row in table {} with id {}",  table, id);
+//        String deleteMessage = MessageFormat.format(strings.getString("mainframe.infofield.table.row.insert"), table, id);
+        String message = infoTextField.getText();
+        try {
+            logger.verbose("notifyRowDeleted: sending update info to other clients...");
+            DatabaseHelperChannel.getInstance().notifyRowDeleted(table, date);
+            logger.verbose("notifyRowDeleted: sending update info to other clients success!");
+        } catch (DatabaseHelperException e) {
+            logger.warn("notifyRowDeleted: sending update info to other clients error logged in next line");
+            logger.error("DBH", e);
+            message += " " + strings.getString("mainframe.infofield.update.communication.fail");
+        }
+
+//        infoTextField.setInfoMessage(message);
+    }
+
     private void onError(Exception error) {
         logger.error(error.getMessage(), error);
 
@@ -2071,6 +2101,8 @@ public class MainFrame extends JFrame implements TableModelListener {
             logString = "updated";
             textFieldString = MessageFormat.format(strings.getString("database.helper.table.row.update"), event.tableName, event.whoName, elapsedSeconds);
         } else if(event instanceof RowDeleteEvent) {
+            logString = "deleted";
+            textFieldString = MessageFormat.format(strings.getString("database.helper.table.row.delete"), event.tableName, event.whoName, elapsedSeconds);
             //TODO: not implemented yet
         }
 
@@ -2115,7 +2147,12 @@ public class MainFrame extends JFrame implements TableModelListener {
         logger.info("onDateAdded: received database helper message: new date added '{}'", date);
         long elapsedSeconds = (System.currentTimeMillis() - timestamp) / 1000;
         infoTextField.setUploadMessage(MessageFormat.format(strings.getString("database.helper.day.add"), who, elapsedSeconds));
-        infoTextField.addMouseListener(aggiornaOnClickAdapter);
+        infoTextField.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                loadDate(date, RELOAD_RESETCONNECTION);
+            }
+        });
     }
 
 

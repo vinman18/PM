@@ -221,6 +221,15 @@ public class DatabaseHelperChannel {
         socket.emit(SocketEvents.ROW_INSERT, args);
     }
 
+    public void notifyRowDeleted(String tableName, String date) throws DatabaseHelperException {
+        if(socket == null || !socket.connected()) {
+            throw  new DatabaseHelperException("Socket not connected");
+        }
+
+        JSONObject args = packRowJSONObject(tableName, date);
+        socket.emit(SocketEvents.ROW_DELETE, args);
+    }
+
     public void notifyRowUpdated(String tableName, String date) throws DatabaseHelperException {
         if(socket == null || !socket.connected()) {
             throw  new DatabaseHelperException("Socket not connected");

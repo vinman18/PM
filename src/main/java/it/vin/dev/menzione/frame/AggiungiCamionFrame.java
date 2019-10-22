@@ -4,6 +4,7 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
+import com.mysql.cj.jdbc.exceptions.MysqlDataTruncation;
 import it.vin.dev.menzione.Msg;
 import it.vin.dev.menzione.ViaggiUtils;
 import it.vin.dev.menzione.events.CamionInsertEvent;
@@ -20,7 +21,6 @@ import java.util.Vector;
 
 import javax.swing.border.TitledBorder;
 
-import com.mysql.jdbc.MysqlDataTruncation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -304,8 +304,8 @@ public class AggiungiCamionFrame extends JFrame implements WindowListener {
     private void databaseError(SQLException e) {
         logger.error(e.getMessage(), e);
         e.printStackTrace();
-        Msg.error(this, "Errore di collegamento col"
-                + "database.\nInformazioni sull'errore:\n" +
+        Msg.error(this, "Errore database."
+                + "\nInformazioni sull'errore:\n" +
                 "Codice errore: "+e.getErrorCode()+"\n"+e.getMessage());
     }
 

@@ -94,7 +94,12 @@ public class ViaggiUtils {
 //        File configFile = new File(configPath);
 //        File columnsFile = new File(getColumnsPreferencesPath());
 //        InputStream defaultConfig = getDefaultConfig();
-        List<String> defaultFiles = getResourceFiles("DefaultFiles");
+
+//        List<String> defaultFiles = getResourceFiles("DefaultFiles");
+        //TODO: generate this list dynamically. NB: the code in previous line doesn't work when application is packed in .jar
+        List<String> defaultFiles = new ArrayList<>();
+        defaultFiles.add("Config.properties");
+        defaultFiles.add("DefaultColumnsPreferences.json");
 
         if(!appFolder.exists()) {
             logger.info("App folder not found. Creation...");
@@ -233,6 +238,10 @@ public class ViaggiUtils {
             return new String(plainTextPwdBytes, Charsets.UTF_8);
         } catch (InvalidKeyException | NoSuchAlgorithmException | InvalidKeySpecException | NoSuchPaddingException | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
+        } catch (IllegalArgumentException ex) {
+            logger.warn("Error on decrypting: {}", ex.getMessage());
+            logger.warn("Assuming that string was not encrypted");
+            return encryptedPwd;
         }
 
         return null;
